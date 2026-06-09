@@ -1,17 +1,12 @@
 import { requireRole } from "@/server/session";
-import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   availableShippingProviders,
   listProviderServices,
   listZonesWithMethods,
 } from "@/modules/shipping/service";
-import {
-  deleteMethodAction,
-  deleteZoneAction,
-  toggleMethodAction,
-} from "@/modules/shipping/actions";
-import { MethodForm, ZoneForm } from "./shipping-forms";
+import { deleteZoneAction } from "@/modules/shipping/actions";
+import { MethodForm, MethodRow, ZoneForm } from "./shipping-forms";
 
 export default async function AdminShippingPage() {
   await requireRole("STAFF");
@@ -60,37 +55,7 @@ export default async function AdminShippingPage() {
             {zone.methods.length > 0 ? (
               <ul className="divide-y rounded-md border text-sm">
                 {zone.methods.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between gap-3 p-3">
-                    <div>
-                      <span className="font-medium">{m.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {m.provider}
-                        {m.serviceCode ? ` · service ${m.serviceCode}` : ""}
-                        {m.requiresPickupPoint ? " · punkt odbioru" : ""}
-                      </span>
-                      <div className="text-xs text-muted-foreground">
-                        {formatMoney(m.priceAmount, m.currency)}
-                        {m.freeOver != null
-                          ? ` · darmowa od ${formatMoney(m.freeOver, m.currency)}`
-                          : ""}
-                        {!m.isActive ? " · nieaktywna" : ""}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <form action={toggleMethodAction}>
-                        <input type="hidden" name="id" value={m.id} />
-                        <Button type="submit" variant="outline" size="sm">
-                          {m.isActive ? "Wyłącz" : "Włącz"}
-                        </Button>
-                      </form>
-                      <form action={deleteMethodAction}>
-                        <input type="hidden" name="id" value={m.id} />
-                        <Button type="submit" variant="outline" size="sm">
-                          Usuń
-                        </Button>
-                      </form>
-                    </div>
-                  </li>
+                  <MethodRow key={m.id} method={m} providers={providers} services={services} />
                 ))}
               </ul>
             ) : (
