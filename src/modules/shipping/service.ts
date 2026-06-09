@@ -67,7 +67,10 @@ export async function getMethodPickupPoints(
   }
   if (!provider.getPickupPoints) return [];
   try {
-    return await provider.getPickupPoints(q);
+    const points = await provider.getPickupPoints(q);
+    // Filtr po przewoźniku metody (slug zapisany przy tworzeniu) — np. dla metody
+    // „InPost Paczkomat" pokazujemy tylko punkty InPost. Brak slugu → bez filtra.
+    return method.carrier ? points.filter((p) => p.carrier === method.carrier) : points;
   } catch {
     return [];
   }

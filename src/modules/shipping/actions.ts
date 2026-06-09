@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/server/session";
 import { toMinor } from "@/lib/utils";
 import { toFieldErrors } from "@/lib/forms";
+import { listProviderServices } from "./service";
 import { shippingMethodSchema, shippingZoneSchema } from "./schemas";
 
 export type ShippingState =
@@ -14,6 +15,17 @@ export type ShippingState =
 function num(v: FormDataEntryValue | null): string | undefined {
   const s = typeof v === "string" ? v.trim() : "";
   return s === "" ? undefined : s;
+}
+
+/**
+ * Ustala slug przewoźnika (np. "inpost") dla wybranej usługi — z listy usług
+ * adaptera. Pozwala potem filtrować punkty odbioru po przewoźniku. null gdy
+ * manual / brak dopasowania (kod wpisany ręcznie).
+ */
+async function resolveCarrier(provider: string, serviceCode?: string): Promise<string | null> {
+  if (!serviceCode || provider === "manual") return null;
+  const services = await listProviderServices(provider);
+  return services.find((s) => String(s.id) === serviceCode)?.service ?? null;
 }
 
 export async function createZoneAction(
@@ -90,6 +102,7 @@ export async function createMethodAction(
       name: d.name,
       provider: d.provider,
       serviceCode: d.serviceCode ?? null,
+      carrier: await resolveCarrier(d.provider, d.serviceCode),
       priceAmount: toMinor(d.price),
       freeOver: d.freeOver != null ? toMinor(d.freeOver) : null,
       requiresPickupPoint: d.requiresPickupPoint,
@@ -153,6 +166,7 @@ export async function updateMethodAction(
       name: d.name,
       provider: d.provider,
       serviceCode: d.serviceCode ?? null,
+      carrier: await resolveCarrier(d.provider, d.serviceCode),
       priceAmount: toMinor(d.price),
       freeOver: d.freeOver != null ? toMinor(d.freeOver) : null,
       requiresPickupPoint: d.requiresPickupPoint,

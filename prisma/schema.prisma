@@ -452,6 +452,7 @@ model ShippingMethod {
   name                String
   provider            String       @default("manual")
   serviceCode         String?
+  carrier             String? // slug przewoźnika (np. "inpost") — filtr punktów odbioru
   requiresPickupPoint Boolean      @default(false)
   priceAmount         Int // stała cena dla klienta
   currency            String       @default("PLN")
