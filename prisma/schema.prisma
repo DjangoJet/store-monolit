@@ -563,6 +563,14 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+// Status w Krajowym Systemie e-Faktur (KSeF 2.0). NOT_SENT = nie wysłano / KSeF wyłączony.
+enum KsefStatus {
+  NOT_SENT
+  PENDING // wysłano, oczekuje na przetworzenie (mamy numer referencyjny)
+  ACCEPTED // przyjęta, nadano numer KSeF + UPO
+  REJECTED // odrzucona przez KSeF
+}
+
 model Invoice {
   id      String  @id @default(cuid())
   number  String  @unique
@@ -589,11 +597,20 @@ model Invoice {
 
   pdfUrl String? // opcjonalny zapis do storage
 
+  // KSeF (Krajowy System e-Faktur) — wypełniane przez adapter e-fakturowania.
+  ksefStatus    KsefStatus @default(NOT_SENT)
+  ksefReference String? // numer referencyjny (po wysłaniu, przed akceptacją)
+  ksefNumber    String? // numer KSeF (po akceptacji)
+  ksefUpoXml    String? // UPO — Urzędowe Poświadczenie Odbioru (XML)
+  ksefSentAt    DateTime?
+  ksefError     String? // komunikat odrzucenia/błędu
+
   lines     InvoiceLine[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@index([orderId])
+  @@index([ksefStatus])
 }
 
 model InvoiceLine {

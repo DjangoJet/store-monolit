@@ -62,6 +62,19 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
 
+  // KSeF — Krajowy System e-Faktur (opcjonalne; bez konfiguracji provider e-fakturowania = `none`).
+  // Uwierzytelnianie docelowe: certyfikat KSeF (jedyna metoda od 1.01.2027; token jako ścieżka tymczasowa).
+  KSEF_ENABLED: boolish.default(false),
+  KSEF_ENV: z.enum(["test", "demo", "prod"]).default("test"),
+  KSEF_NIP: z.string().optional(), // NIP podmiotu wystawiającego (10 cyfr)
+  KSEF_CERT_PATH: z.string().optional(), // ścieżka do certyfikatu (PEM) — włącza auth XAdES
+  KSEF_KEY_PATH: z.string().optional(), // ścieżka do klucza prywatnego (PEM)
+  KSEF_CERT_PASSWORD: z.string().optional(), // hasło klucza prywatnego (jeśli zaszyfrowany)
+  KSEF_CERT_SUBJECT_TYPE: z
+    .enum(["certificateSubject", "certificateFingerprint"])
+    .default("certificateFingerprint"), // jak KSeF ma rozpoznać podmiot po certyfikacie
+  KSEF_TOKEN: z.string().optional(), // token KSeF — tylko do szybkich testów (wygasa 31.12.2026)
+
   // Feature flags
   FEATURE_MARKETING: boolish.default(true),
   FEATURE_CMS: boolish.default(true),

@@ -19,6 +19,8 @@ Hosting: **Coolify (Docker)** jako główny, przenośny na **Vercel** bez dużyc
 - [`docs/05-roadmap.md`](docs/05-roadmap.md) — fazy wdrożenia.
 - [`docs/06-template-usage.md`](docs/06-template-usage.md) — jak założyć nowy sklep z template.
 - [`docs/07-template-sync.md`](docs/07-template-sync.md) — workflow gita: nowe sklepy + synchronizacja zmian z template.
+- [`docs/08-form-validation.md`](docs/08-form-validation.md) — wzorzec walidacji formularzy (Zod + błędy per-pole).
+- [`docs/09-ksef.md`](docs/09-ksef.md) — integracja KSeF (adapter e-fakturowania): stan i plan wdrożenia.
 
 ## Szybki start (dev)
 

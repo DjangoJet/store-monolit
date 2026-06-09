@@ -7,3 +7,6 @@ export interface JobQueue {
     opts?: { delayMs?: number },
   ): Promise<void>;
 }
+
+/** Handler zadania — rejestrowany w implementacji kolejki pod nazwą zadania. */
+export type JobHandler = (payload: unknown) => Promise<void>;

@@ -2,14 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/server/session";
+import { toFieldErrors } from "@/lib/forms";
 import {
   cancelInvoice,
   createInvoiceFromOrder,
   saveInvoiceSettings,
-  type SellerSettings,
 } from "./service";
+import { refreshKsefStatus, submitInvoiceToKsef } from "./efaktura/service";
+import { invoiceSettingsSchema } from "./schemas";
 
-export type InvoiceState = { error?: string; success?: string } | undefined;
+export type InvoiceState =
+  | { error?: string; success?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 export async function issueInvoiceAction(formData: FormData) {
   await requireRole("STAFF");
@@ -32,28 +36,42 @@ export async function cancelInvoiceAction(formData: FormData) {
   revalidatePath(`/admin/invoices/${id}`);
 }
 
+// ---- KSeF (ręczna wysyłka / odświeżenie statusu; docelowo przez job) ----
+
+export async function submitKsefAction(formData: FormData) {
+  await requireRole("STAFF");
+  const id = String(formData.get("id"));
+  await submitInvoiceToKsef(id);
+  revalidatePath(`/admin/invoices/${id}`);
+}
+
+export async function refreshKsefAction(formData: FormData) {
+  await requireRole("STAFF");
+  const id = String(formData.get("id"));
+  await refreshKsefStatus(id);
+  revalidatePath(`/admin/invoices/${id}`);
+}
+
 export async function saveInvoiceSettingsAction(
   _prev: InvoiceState,
   formData: FormData,
 ): Promise<InvoiceState> {
   await requireRole("ADMIN");
-  const settings: SellerSettings = {
-    name: String(formData.get("name") ?? "").trim(),
-    address: String(formData.get("address") ?? "").trim(),
-    taxId: formData.get("taxId") ? String(formData.get("taxId")) : undefined,
+  const parsed = invoiceSettingsSchema.safeParse({
+    name: formData.get("name"),
+    address: formData.get("address") ?? "",
+    taxId: formData.get("taxId") || undefined,
     vatExempt: formData.get("vatExempt") === "on",
-    exemptionNote: formData.get("exemptionNote")
-      ? String(formData.get("exemptionNote"))
-      : undefined,
-    bankAccount: formData.get("bankAccount")
-      ? String(formData.get("bankAccount"))
-      : undefined,
-    vatRate: Number(formData.get("vatRate")) || 23,
-    numberPrefix: String(formData.get("numberPrefix") ?? "FV "),
-    paymentTermsDays: Number(formData.get("paymentTermsDays")) || 14,
-  };
-  if (!settings.name) return { error: "Nazwa sprzedawcy jest wymagana." };
-  await saveInvoiceSettings(settings);
+    exemptionNote: formData.get("exemptionNote") || undefined,
+    bankAccount: formData.get("bankAccount") || undefined,
+    vatRate: formData.get("vatRate") ?? 23,
+    numberPrefix: formData.get("numberPrefix") ?? "FV ",
+    paymentTermsDays: formData.get("paymentTermsDays") ?? 14,
+  });
+  if (!parsed.success) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
+  }
+  await saveInvoiceSettings(parsed.data);
   revalidatePath("/admin/settings/invoices");
   return { success: "Zapisano ustawienia faktur." };
 }

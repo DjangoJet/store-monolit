@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { vatPortion } from "@/modules/orders/tax";
+import { submitInvoiceToKsef } from "./efaktura/service";
 
 const SETTINGS_KEY = "invoice.config";
 
@@ -160,7 +161,7 @@ export async function createInvoiceFromOrder(
   const dueDate = new Date(issueDate);
   dueDate.setDate(dueDate.getDate() + settings.paymentTermsDays);
 
-  return prisma.invoice.create({
+  const invoice = await prisma.invoice.create({
     data: {
       number: await nextInvoiceNumber(settings.numberPrefix),
       orderId: order.id,
@@ -181,6 +182,15 @@ export async function createInvoiceFromOrder(
     },
     include: { lines: true },
   });
+
+  // Wysyłka do KSeF — no-op gdy KSEF_ENABLED=false. Nie blokuje wystawienia faktury.
+  try {
+    await submitInvoiceToKsef(invoice.id);
+  } catch {
+    // błąd KSeF nie może wywrócić tworzenia faktury (szczegóły lądują w invoice.ksefError)
+  }
+
+  return invoice;
 }
 
 export function getInvoice(id: string) {

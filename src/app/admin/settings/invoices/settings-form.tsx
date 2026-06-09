@@ -10,18 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export function InvoiceSettingsForm({ settings }: { settings: SellerSettings }) {
   const [state, action, pending] = useActionState<InvoiceState, FormData>(
     saveInvoiceSettingsAction,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="max-w-xl space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nazwa sprzedawcy *</Label>
-        <Input id="name" name="name" defaultValue={settings.name} required />
+        <Input id="name" name="name" defaultValue={settings.name} aria-invalid={!!errors?.name} required />
+        <FieldError message={errors?.name} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="address">Adres</Label>
@@ -30,7 +33,8 @@ export function InvoiceSettingsForm({ settings }: { settings: SellerSettings }) 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="taxId">NIP / PESEL</Label>
-          <Input id="taxId" name="taxId" defaultValue={settings.taxId ?? ""} />
+          <Input id="taxId" name="taxId" defaultValue={settings.taxId ?? ""} aria-invalid={!!errors?.taxId} />
+          <FieldError message={errors?.taxId} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="bankAccount">Konto bankowe</Label>
@@ -55,7 +59,14 @@ export function InvoiceSettingsForm({ settings }: { settings: SellerSettings }) 
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="vatRate">Stawka VAT (%)</Label>
-          <Input id="vatRate" name="vatRate" type="number" defaultValue={settings.vatRate} />
+          <Input
+            id="vatRate"
+            name="vatRate"
+            type="number"
+            defaultValue={settings.vatRate}
+            aria-invalid={!!errors?.vatRate}
+          />
+          <FieldError message={errors?.vatRate} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="numberPrefix">Prefiks numeru</Label>
@@ -68,7 +79,9 @@ export function InvoiceSettingsForm({ settings }: { settings: SellerSettings }) 
             name="paymentTermsDays"
             type="number"
             defaultValue={settings.paymentTermsDays}
+            aria-invalid={!!errors?.paymentTermsDays}
           />
+          <FieldError message={errors?.paymentTermsDays} />
         </div>
       </div>
 
