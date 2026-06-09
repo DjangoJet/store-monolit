@@ -18,6 +18,10 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(1, "AUTH_SECRET jest wymagane"),
   AUTH_TRUST_HOST: boolish.default(true),
 
+  // Wybór domyślnego providera (opcjonalny; gdy pusty — auto wg dostępnych kluczy)
+  PAYMENT_PROVIDER: z.string().optional(),
+  SHIPPING_PROVIDER: z.string().optional(),
+
   // Płatności — Stripe (opcjonalne na starcie)
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),

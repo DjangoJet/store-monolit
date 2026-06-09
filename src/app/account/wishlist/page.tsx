@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireUser } from "@/server/session";
+import { requireFeature } from "@/server/feature";
 import { listWishlist } from "@/modules/wishlist/service";
 import { ProductCard } from "@/components/product-card";
 
 export default async function AccountWishlistPage() {
+  requireFeature("marketing");
   const user = await requireUser();
   const items = await listWishlist(user.id);
 

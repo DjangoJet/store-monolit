@@ -28,3 +28,14 @@ export function getCarrierProvider(id: string): CarrierProvider {
 export function availableCarriers(): string[] {
   return Object.keys(providers);
 }
+
+/**
+ * Domyślny przewoźnik: jawny `SHIPPING_PROVIDER` (jeśli zarejestrowany),
+ * inaczej Furgonetka gdy skonfigurowana, inaczej manual.
+ */
+export function getDefaultCarrierId(): string {
+  if (env.SHIPPING_PROVIDER && providers[env.SHIPPING_PROVIDER]) {
+    return env.SHIPPING_PROVIDER;
+  }
+  return providers.furgonetka ? "furgonetka" : "manual";
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listReviews } from "@/modules/reviews/service";
 import { moderateReviewAction } from "@/modules/reviews/actions";
+import { requireFeature } from "@/server/feature";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
+  requireFeature("marketing");
   const sp = await searchParams;
   const status = (sp.status as "PENDING" | "APPROVED" | "REJECTED") || undefined;
   const reviews = await listReviews(status);

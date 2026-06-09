@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublishedPage } from "@/modules/content/service";
+import { requireFeature } from "@/server/feature";
 
 export const revalidate = 300;
 
@@ -23,6 +24,7 @@ export default async function CmsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  requireFeature("cms");
   const { slug } = await params;
   const page = await getPublishedPage(slug);
   if (!page) notFound();

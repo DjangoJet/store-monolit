@@ -41,6 +41,28 @@ npm run dev                                          # http://localhost:3000
 
 Admin: `admin@example.com` / `admin123` (zmień po pierwszym logowaniu).
 
+## 3a. Konfiguracja modułów per-sklep
+
+Dwa mechanizmy, oba przez `.env` (zero kodu):
+
+**Włącz/wyłącz cały moduł — flagi `FEATURE_*`:**
+- `FEATURE_INVOICES`, `FEATURE_MARKETING`, `FEATURE_CMS`, `FEATURE_DIGITAL`, `FEATURE_MULTIREGION`.
+- Wyłączona flaga **chowa UI i twardo blokuje trasy modułu** (404 przez `requireFeature` w
+  layout/page) — np. `FEATURE_INVOICES=false` → `/admin/invoices`, `/admin/settings/invoices`,
+  `/account/invoices/*` zwracają 404, znika menu „Faktury", nie liczy się VAT.
+
+**Wybór bramki płatności / przewoźnika:**
+- Provider aktywuje się przez obecność kluczy: `STRIPE_*` → Stripe, `FURGONETKA_*` → Furgonetka;
+  bez kluczy działa `manual`.
+- Domyślny provider można wymusić jawnie: `PAYMENT_PROVIDER=stripe`, `SHIPPING_PROVIDER=furgonetka`
+  (gdy pusty — auto: jest klucz → dany provider, inaczej `manual`; nieznany/niezarejestrowany →
+  bezpieczny fallback na `manual`).
+- Dodanie nowej bramki (Przelewy24/PayU) = nowa klasa `PaymentProvider`/`CarrierProvider` +
+  wpis w rejestrze (`docs/04-adapters.md`), potem wskazujesz ją w `PAYMENT_PROVIDER`.
+
+> Trwałe usunięcie modułu (mniejszy build/obraz) = skasowanie folderu `modules/<x>` + jego tras,
+> patrz `docs/07-template-sync.md`. Do zwykłego „nie chcę tej funkcji w tym sklepie" wystarczy flaga.
+
 ## 4. Dostosowanie wyglądu
 
 - Logika jest oddzielona od UI (`src/modules/*` = services, `src/app/*` = cienkie widoki).

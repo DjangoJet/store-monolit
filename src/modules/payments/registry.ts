@@ -21,7 +21,13 @@ export function getPaymentProvider(id: string): PaymentProvider {
   return provider;
 }
 
-/** Domyślny provider: Stripe gdy skonfigurowany, inaczej manual. */
+/**
+ * Domyślny provider: jawny wybór `PAYMENT_PROVIDER` (jeśli zarejestrowany),
+ * w przeciwnym razie Stripe gdy skonfigurowany, inaczej manual.
+ */
 export function getDefaultProviderId(): string {
+  if (env.PAYMENT_PROVIDER && providers[env.PAYMENT_PROVIDER]) {
+    return env.PAYMENT_PROVIDER;
+  }
   return env.STRIPE_SECRET_KEY ? "stripe" : "manual";
 }

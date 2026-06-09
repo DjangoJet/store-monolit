@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireRole } from "@/server/session";
+import { requireFeature } from "@/server/feature";
 import { getInvoiceSettings } from "@/modules/invoices/service";
 import { InvoiceSettingsForm } from "./settings-form";
 
 export default async function InvoiceSettingsPage() {
+  requireFeature("invoices");
   await requireRole("ADMIN");
   const settings = await getInvoiceSettings();
 

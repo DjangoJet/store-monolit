@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/server/session";
+import { requireFeature } from "@/server/feature";
 import { getInvoiceForUser } from "@/modules/invoices/service";
 import { InvoiceView, type InvoiceViewData } from "@/components/invoice-view";
 import { PrintButton } from "@/components/print-button";
@@ -10,6 +11,7 @@ export default async function AccountInvoicePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  requireFeature("invoices");
   const { id } = await params;
   const user = await requireUser();
   const invoice = await getInvoiceForUser(id, user.id);

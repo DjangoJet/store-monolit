@@ -2,6 +2,7 @@ import { listDiscounts } from "@/modules/discounts/service";
 import { deleteDiscountAction } from "@/modules/discounts/actions";
 import { formatMoney } from "@/lib/config";
 import { Badge } from "@/components/ui/badge";
+import { requireFeature } from "@/server/feature";
 import { DiscountForm } from "./discount-form";
 
 function describeValue(d: { type: string; value: number }) {
@@ -11,6 +12,7 @@ function describeValue(d: { type: string; value: number }) {
 }
 
 export default async function AdminDiscountsPage() {
+  requireFeature("marketing");
   const discounts = await listDiscounts();
 
   return (

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getOrderDetail } from "@/modules/orders/admin";
 import { getInvoiceByOrder } from "@/modules/invoices/service";
 import { issueInvoiceAction } from "@/modules/invoices/actions";
-import { availableCarriers } from "@/modules/shipping/registry";
+import { availableCarriers, getDefaultCarrierId } from "@/modules/shipping/registry";
 import { features } from "@/lib/config";
 import {
   addOrderNoteAction,
@@ -44,6 +44,7 @@ export default async function AdminOrderDetailPage({
 
   const addr = (order.shippingAddress as Addr | null) ?? null;
   const carriers = availableCarriers();
+  const defaultCarrier = getDefaultCarrierId();
   const paidPayment = order.payments.find((p) => p.status === "PAID");
   const invoice = features.invoices ? await getInvoiceByOrder(order.id) : null;
 
@@ -172,7 +173,7 @@ export default async function AdminOrderDetailPage({
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Przewoźnik (provider)</Label>
-                  <Select name="provider" defaultValue="manual">
+                  <Select name="provider" defaultValue={defaultCarrier}>
                     {carriers.map((c) => (
                       <option key={c} value={c}>
                         {c}
