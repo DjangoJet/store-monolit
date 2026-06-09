@@ -46,13 +46,55 @@ export const addressSchema = z
     }
   });
 
+/**
+ * Adres do faktury — bez imienia/nazwiska (nazwę nabywcy niesie buyerName lub
+ * dane z adresu wysyłki). Walidacja kodu pocztowego per kraj, jak w adresie wysyłki.
+ * W formularzu pola mają prefiks `billing*`, by nie kolidować z adresem dostawy.
+ */
+export const billingAddressSchema = z
+  .object({
+    line1: z.string().trim().min(1, "Adres jest wymagany"),
+    line2: z.string().trim().optional(),
+    city: z.string().trim().min(1, "Miasto jest wymagane"),
+    postalCode: z.string().trim().min(1, "Kod pocztowy jest wymagany"),
+    country: z.enum(COUNTRY_CODES).default("PL"),
+  })
+  .superRefine((data, ctx) => {
+    const rule = POSTAL_CODE_RULES[data.country];
+    if (data.postalCode && !rule.pattern.test(data.postalCode)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["postalCode"],
+        message: `Nieprawidłowy kod pocztowy (${rule.hint})`,
+      });
+    }
+  });
+
+// NIP nabywcy (B2B): opcjonalny, ale gdy podany — dokładnie 10 cyfr (myślniki/spacje czyszczone).
+const optionalNip = z.preprocess(
+  (v) => {
+    if (typeof v !== "string") return v;
+    const cleaned = v.replace(/[\s-]/g, "");
+    return cleaned === "" ? undefined : cleaned;
+  },
+  z.string().regex(/^\d{10}$/, "NIP musi mieć 10 cyfr").optional(),
+);
+
 export const checkoutSchema = z.object({
   email: z.string().email("Nieprawidłowy email"),
   shippingMethodId: z.string().min(1, "Wybierz metodę wysyłki"),
   pickupPointCode: z.string().trim().optional(),
   customerNote: z.string().trim().max(1000, "Uwagi są zbyt długie").optional(),
   address: addressSchema,
+  // Faktura: intencja + dane nabywcy. billingAddress parsujemy osobno w akcji
+  // (prefiks pól), więc tu jest tylko opcjonalnym nośnikiem typu.
+  invoiceRequested: z.boolean().default(false),
+  buyerNip: optionalNip,
+  buyerName: z.string().trim().max(200, "Nazwa jest zbyt długa").optional(),
+  billingSameAsShipping: z.boolean().default(true),
+  billingAddress: billingAddressSchema.optional(),
 });
 
 export type AddressInput = z.infer<typeof addressSchema>;
+export type BillingAddressInput = z.infer<typeof billingAddressSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

@@ -345,6 +345,8 @@ model Order {
   shippingAddress     Json?
   billingAddress      Json?
   shippingPickupPoint Json?
+  invoiceRequested    Boolean @default(false)
+  buyerNip            String?
 
   discountCode   String?
   shippingMethod String?
@@ -458,6 +460,11 @@ model ShippingMethod {
   maxDays             Int?
   isActive            Boolean      @default(true)
   position            Int          @default(0)
+
+  // Brak duplikatu tej samej usługi w strefie dla tego samego typu dostawy
+  // (kurier vs punkt odbioru). NULL serviceCode (manual) Postgres traktuje jako
+  // odrębne, więc wiele metod „manual" w strefie jest dozwolonych.
+  @@unique([zoneId, serviceCode, requiresPickupPoint])
 }
 
 model Shipment {

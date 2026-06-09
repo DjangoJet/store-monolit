@@ -38,3 +38,6 @@ npm-debug.log*
 
 # turbo
 .turbo
+
+# Local History (rozszerzenie edytora)
+.history/

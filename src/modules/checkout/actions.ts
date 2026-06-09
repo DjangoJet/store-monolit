@@ -7,11 +7,20 @@ import { createOrderFromCart } from "@/modules/orders/service";
 import { createPaymentForOrder } from "@/modules/payments/service";
 import { getCurrentUser } from "@/server/session";
 import { checkoutConfig } from "@/lib/config";
-import { checkoutSchema } from "./schemas";
+import { billingAddressSchema, checkoutSchema, type BillingAddressInput } from "./schemas";
 
 export type CheckoutState =
   | { error?: string; fieldErrors?: Record<string, string> }
   | undefined;
+
+/** Prefiksuje klucze błędów (np. `postalCode` -> `billingPostalCode`), by nie kolidowały z adresem dostawy. */
+function prefixKeys(errs: Record<string, string>, prefix: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(errs)) {
+    out[`${prefix}${k[0].toUpperCase()}${k.slice(1)}`] = v;
+  }
+  return out;
+}
 
 export async function placeOrderAction(
   _prev: CheckoutState,
@@ -26,6 +35,9 @@ export async function placeOrderAction(
   if (!cart || cart.lines.length === 0) {
     return { error: "Koszyk jest pusty." };
   }
+
+  const invoiceRequested = formData.get("invoiceRequested") === "on";
+  const billingSameAsShipping = formData.get("billingSameAsShipping") === "on";
 
   const parsed = checkoutSchema.safeParse({
     email: formData.get("email"),
@@ -42,6 +54,10 @@ export async function placeOrderAction(
       country: formData.get("country") || "PL",
       phone: formData.get("phone") || undefined,
     },
+    invoiceRequested,
+    buyerNip: formData.get("buyerNip") || undefined,
+    buyerName: formData.get("buyerName") || undefined,
+    billingSameAsShipping,
   });
   if (!parsed.success) {
     return {
@@ -50,7 +66,26 @@ export async function placeOrderAction(
     };
   }
 
-  const order = await createOrderFromCart(cart, parsed.data);
+  // Adres do faktury (gdy inny niż dostawy) — parsowany osobno, klucze błędów z prefiksem `billing`.
+  let billingAddress: BillingAddressInput | undefined;
+  if (invoiceRequested && !billingSameAsShipping) {
+    const billing = billingAddressSchema.safeParse({
+      line1: formData.get("billingLine1"),
+      line2: formData.get("billingLine2") || undefined,
+      city: formData.get("billingCity"),
+      postalCode: formData.get("billingPostalCode"),
+      country: formData.get("billingCountry") || "PL",
+    });
+    if (!billing.success) {
+      return {
+        error: "Sprawdź poprawność danych.",
+        fieldErrors: prefixKeys(toFieldErrors(billing.error), "billing"),
+      };
+    }
+    billingAddress = billing.data;
+  }
+
+  const order = await createOrderFromCart(cart, { ...parsed.data, billingAddress });
   const payment = await createPaymentForOrder(order);
   await clearCart(cart.id);
 

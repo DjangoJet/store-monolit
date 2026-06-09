@@ -135,9 +135,12 @@ export async function createInvoiceFromOrder(
   const vatAmount = lines.reduce((s, l) => s + l.vat, 0);
   const grossAmount = lines.reduce((s, l) => s + l.gross, 0);
 
-  const addr = (order.shippingAddress as Record<string, string> | null) ?? {};
+  // Dane nabywcy: priorytet ma adres do faktury (gdy klient go podał), inaczej adres dostawy.
+  const billing = order.billingAddress as Record<string, string> | null;
+  const addr = billing ?? (order.shippingAddress as Record<string, string> | null) ?? {};
   const buyerName =
     opts.buyerName ||
+    billing?.company ||
     [addr.firstName, addr.lastName].filter(Boolean).join(" ").trim() ||
     order.email;
   const buyer = {
@@ -172,7 +175,7 @@ export async function createInvoiceFromOrder(
       currency: order.currency,
       seller: seller as unknown as Prisma.InputJsonValue,
       buyer: buyer as unknown as Prisma.InputJsonValue,
-      buyerNip: opts.buyerNip || null,
+      buyerNip: opts.buyerNip || order.buyerNip || null,
       netAmount,
       vatAmount,
       grossAmount,

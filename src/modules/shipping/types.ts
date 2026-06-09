@@ -65,8 +65,17 @@ export interface OrderForShipment {
   shippingAddress: AddressLike;
 }
 
+export interface CarrierService {
+  id: number;
+  service: string;
+  name: string;
+}
+
 export interface CarrierProvider {
   readonly id: string;
+
+  /** Usługi przewoźnika dostępne na koncie (admin: wybór przy tworzeniu metody wysyłki). */
+  listServices?(): Promise<CarrierService[]>;
 
   /** Faktyczny koszt — używane po stronie admina, nie w checkoucie. */
   getRates(input: {

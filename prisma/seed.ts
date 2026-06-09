@@ -73,12 +73,14 @@ async function main() {
       data: {
         name: "Polska",
         countries: ["PL"],
+        // Domyślnie provider "manual" (admin wpisuje tracking ręcznie) — działa od razu,
+        // bez konta przewoźnika. Metody Furgonetki dodajesz w panelu wysyłki (admin),
+        // który pobiera dostępne usługi i zapisuje numeryczny serviceCode.
         methods: {
           create: [
             {
               name: "Kurier",
-              provider: "furgonetka",
-              serviceCode: "dpd_courier",
+              provider: "manual",
               priceAmount: 1500,
               currency: "PLN",
               freeOver: 20000,
@@ -87,8 +89,7 @@ async function main() {
             },
             {
               name: "Paczkomat InPost",
-              provider: "furgonetka",
-              serviceCode: "inpost_locker",
+              provider: "manual",
               requiresPickupPoint: true,
               priceAmount: 1200,
               currency: "PLN",

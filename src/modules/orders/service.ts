@@ -7,7 +7,7 @@ import {
   sendPaymentConfirmation,
 } from "@/modules/notifications/service";
 import { evaluateDiscount, recordDiscountUsage } from "@/modules/discounts/service";
-import { getInvoiceSettings } from "@/modules/invoices/service";
+import { createInvoiceFromOrder, getInvoiceSettings } from "@/modules/invoices/service";
 import { computeOrderTax } from "./tax";
 import type { CartView } from "@/modules/cart/service";
 import type { CheckoutInput } from "@/modules/checkout/schemas";
@@ -41,6 +41,15 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
   const shipping = freeShipping ? 0 : resolveShippingPrice(method, subtotal);
   const total = subtotal - discountAmount + shipping;
 
+  // Adres do faktury: tylko gdy klient prosi o fakturę. Gdy „taki sam jak dostawy"
+  // kopiujemy adres wysyłki; nazwa firmy (jeśli podana) trafia jako `company`.
+  const billingAddress = data.invoiceRequested
+    ? {
+        ...(data.billingAddress ?? data.address),
+        company: data.buyerName ?? null,
+      }
+    : undefined;
+
   // VAT (stawka z produktu; 0 gdy sprzedawca zwolniony). Patrz modules/orders/tax.ts.
   const invoiceSettings = await getInvoiceSettings();
   const tax = await computeOrderTax({
@@ -65,10 +74,13 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
       totalAmount: total,
       discountCode,
       shippingAddress: data.address,
+      billingAddress,
       shippingMethod: method.name,
       shippingPickupPoint: data.pickupPointCode
         ? { code: data.pickupPointCode }
         : undefined,
+      invoiceRequested: data.invoiceRequested,
+      buyerNip: data.buyerNip ?? null,
       customerNote: data.customerNote,
       lines: {
         create: cart.lines.map((l) => ({
@@ -101,6 +113,24 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
   return order;
 }
 
+/**
+ * Wystawia fakturę do zamówienia, jeśli klient o nią poprosił (checkout).
+ * Best-effort: błąd fakturowania nie może wywrócić księgowania płatności.
+ * Idempotentne — createInvoiceFromOrder zwraca istniejącą fakturę, jeśli już jest.
+ */
+async function maybeAutoIssueInvoice(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { invoiceRequested: true },
+  });
+  if (!order?.invoiceRequested) return;
+  try {
+    await createInvoiceFromOrder(orderId);
+  } catch (err) {
+    console.error(`[invoice auto-issue] order ${orderId}`, err);
+  }
+}
+
 function stockItemsFromOrder(lines: { variantId: string | null; quantity: number }[]) {
   return lines
     .filter((l): l is { variantId: string; quantity: number } => Boolean(l.variantId))
@@ -127,6 +157,8 @@ export async function markOrderPaid(orderId: string) {
   });
   // Mail „płatność otrzymana" (potwierdzenie zamówienia poszło już przy złożeniu).
   await sendPaymentConfirmation(orderId);
+  // Faktura na życzenie klienta — po zaksięgowaniu płatności.
+  await maybeAutoIssueInvoice(orderId);
 }
 
 /** Zamówienie przyjęte bez płatności online (np. płatność przy odbiorze). */
@@ -149,6 +181,8 @@ export async function confirmOrderUnpaid(orderId: string) {
     },
   });
   // Potwierdzenie zamówienia wysłano już przy złożeniu (createOrderFromCart).
+  // Faktura na życzenie klienta — przy przyjęciu zamówienia (płatność offline).
+  await maybeAutoIssueInvoice(orderId);
 }
 
 /** Płatność nieudana/anulowana: zwolnij rezerwację. */

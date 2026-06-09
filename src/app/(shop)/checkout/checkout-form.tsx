@@ -42,6 +42,8 @@ export function CheckoutForm({
     undefined,
   );
   const [selectedMethod, setSelectedMethod] = useState(methods[0]?.id ?? "");
+  const [wantsInvoice, setWantsInvoice] = useState(false);
+  const [billingSame, setBillingSame] = useState(true);
   const errors = state?.fieldErrors;
 
   const method = methods.find((m) => m.id === selectedMethod);
@@ -174,6 +176,96 @@ export function CheckoutForm({
               <p className="text-xs text-muted-foreground">
                 Widget mapy Paczkomatów dojdzie z integracją Furgonetki (Faza 4).
               </p>
+            </div>
+          )}
+        </section>
+
+        {/* Faktura */}
+        <section className="space-y-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="invoiceRequested"
+              value="on"
+              checked={wantsInvoice}
+              onChange={(e) => setWantsInvoice(e.target.checked)}
+            />
+            Chcę otrzymać fakturę
+          </label>
+
+          {wantsInvoice && (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="space-y-2">
+                <Label htmlFor="buyerName">Nazwa nabywcy / firmy</Label>
+                <Input
+                  id="buyerName"
+                  name="buyerName"
+                  placeholder="np. Acme sp. z o.o. (puste = dane z adresu)"
+                  aria-invalid={!!errors?.buyerName}
+                />
+                <FieldError message={errors?.buyerName} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="buyerNip">NIP (dla faktury na firmę)</Label>
+                <Input
+                  id="buyerNip"
+                  name="buyerNip"
+                  placeholder="10 cyfr"
+                  aria-invalid={!!errors?.buyerNip}
+                />
+                <FieldError message={errors?.buyerNip} />
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="billingSameAsShipping"
+                  value="on"
+                  checked={billingSame}
+                  onChange={(e) => setBillingSame(e.target.checked)}
+                />
+                Adres do faktury taki sam jak adres dostawy
+              </label>
+
+              {!billingSame && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="billingLine1">Ulica i numer *</Label>
+                    <Input
+                      id="billingLine1"
+                      name="billingLine1"
+                      aria-invalid={!!errors?.billingLine1}
+                    />
+                    <FieldError message={errors?.billingLine1} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="billingLine2">Adres c.d.</Label>
+                    <Input id="billingLine2" name="billingLine2" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="billingPostalCode">Kod *</Label>
+                      <Input
+                        id="billingPostalCode"
+                        name="billingPostalCode"
+                        placeholder="00-000"
+                        aria-invalid={!!errors?.billingPostalCode}
+                      />
+                      <FieldError message={errors?.billingPostalCode} />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="billingCity">Miasto *</Label>
+                      <Input
+                        id="billingCity"
+                        name="billingCity"
+                        aria-invalid={!!errors?.billingCity}
+                      />
+                      <FieldError message={errors?.billingCity} />
+                    </div>
+                  </div>
+                  <input type="hidden" name="billingCountry" value="PL" />
+                </div>
+              )}
             </div>
           )}
         </section>

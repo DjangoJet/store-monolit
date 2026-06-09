@@ -312,9 +312,26 @@ export default async function AdminOrderDetailPage({
                 </div>
               ) : (
                 <form action={issueInvoiceAction} className="space-y-2">
+                  {order.invoiceRequested && (
+                    <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                      Klient prosił o fakturę
+                    </p>
+                  )}
                   <input type="hidden" name="orderId" value={order.id} />
-                  <Input name="buyerName" placeholder="Nabywca (opcjonalnie)" className="text-xs" />
-                  <Input name="buyerNip" placeholder="NIP nabywcy (opcjonalnie)" className="text-xs" />
+                  <Input
+                    name="buyerName"
+                    placeholder="Nabywca (opcjonalnie)"
+                    defaultValue={
+                      (order.billingAddress as { company?: string } | null)?.company ?? ""
+                    }
+                    className="text-xs"
+                  />
+                  <Input
+                    name="buyerNip"
+                    placeholder="NIP nabywcy (opcjonalnie)"
+                    defaultValue={order.buyerNip ?? ""}
+                    className="text-xs"
+                  />
                   <Button type="submit" size="sm" className="w-full">
                     Wystaw fakturę
                   </Button>
