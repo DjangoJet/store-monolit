@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CarrierService } from "./types";
+import type { CarrierService, PickupPoint } from "./types";
 import { availableCarriers, getCarrierProvider } from "./registry";
 
 /** Aktywne metody wysyłki do wyboru w checkoucie. */
@@ -46,6 +46,31 @@ export async function listProviderServices(providerId: string): Promise<CarrierS
 
 export async function getShippingMethod(id: string) {
   return prisma.shippingMethod.findUnique({ where: { id } });
+}
+
+/**
+ * Punkty odbioru dla danej metody — przez adapter aktywnego przewoźnika
+ * (provider-agnostic). Pusta lista, gdy przewoźnik nie wspiera punktów (np. manual)
+ * lub gdy API zawiedzie. Zasila uniwersalny picker w checkoucie.
+ */
+export async function getMethodPickupPoints(
+  methodId: string,
+  q: { query?: string; postalCode?: string; lat?: number; lng?: number },
+): Promise<PickupPoint[]> {
+  const method = await prisma.shippingMethod.findUnique({ where: { id: methodId } });
+  if (!method) return [];
+  let provider;
+  try {
+    provider = getCarrierProvider(method.provider);
+  } catch {
+    return [];
+  }
+  if (!provider.getPickupPoints) return [];
+  try {
+    return await provider.getPickupPoints(q);
+  } catch {
+    return [];
+  }
 }
 
 /** Cena wysyłki dla klienta (stała; darmowa powyżej progu). Patrz docs/04-adapters.md. */

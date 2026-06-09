@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldError } from "@/components/ui/field-error";
+import { PickupPointPicker } from "@/components/checkout/pickup-point-picker";
 
 export interface ShippingMethodOption {
   id: string;
@@ -163,20 +164,11 @@ export function CheckoutForm({
             <FieldError message={errors?.shippingMethodId} />
           </div>
           {method?.requiresPickupPoint && (
-            <div className="space-y-2">
-              <Label htmlFor="pickupPointCode">Kod punktu odbioru *</Label>
-              <Input
-                id="pickupPointCode"
-                name="pickupPointCode"
-                placeholder="np. WAW01A"
-                aria-invalid={!!errors?.pickupPointCode}
-                required
-              />
-              <FieldError message={errors?.pickupPointCode} />
-              <p className="text-xs text-muted-foreground">
-                Widget mapy Paczkomatów dojdzie z integracją Furgonetki (Faza 4).
-              </p>
-            </div>
+            <PickupPointPicker
+              key={selectedMethod}
+              methodId={selectedMethod}
+              error={errors?.pickupPointCode}
+            />
           )}
         </section>
 
