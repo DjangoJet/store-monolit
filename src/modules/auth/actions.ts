@@ -22,8 +22,15 @@ export async function loginAction(
     return { error: "Nieprawidłowe dane logowania." };
   }
 
+  // Tylko ścieżki względne (ochrona przed open-redirect).
+  const requested = String(formData.get("redirectTo") ?? "");
+  const redirectTo =
+    requested.startsWith("/") && !requested.startsWith("//")
+      ? requested
+      : DEFAULT_REDIRECT;
+
   try {
-    await signIn("credentials", { ...parsed.data, redirectTo: DEFAULT_REDIRECT });
+    await signIn("credentials", { ...parsed.data, redirectTo });
   } catch (error) {
     // signIn z redirectTo rzuca NEXT_REDIRECT (musi się propagować).
     if (error instanceof AuthError) {

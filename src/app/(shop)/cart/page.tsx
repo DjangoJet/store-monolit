@@ -5,7 +5,7 @@ import {
   updateCartLineAction,
 } from "@/modules/cart/actions";
 import { removeDiscountAction } from "@/modules/discounts/actions";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DiscountForm } from "./discount-form";

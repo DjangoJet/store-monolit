@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm() {
+export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const [state, action, pending] = useActionState(loginAction, undefined);
 
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="redirectTo" value={callbackUrl ?? "/account"} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />

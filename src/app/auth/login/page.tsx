@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const { callbackUrl } = await searchParams;
   return (
     <div className="space-y-6">
       <div>
@@ -10,7 +15,7 @@ export default function LoginPage() {
           Zaloguj się do swojego konta.
         </p>
       </div>
-      <LoginForm />
+      <LoginForm callbackUrl={callbackUrl} />
       <p className="text-center text-sm text-muted-foreground">
         Nie masz konta?{" "}
         <Link href="/auth/register" className="font-medium underline">

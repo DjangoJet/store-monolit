@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/server/session";
-import { readCartCookie, writeCartCookie } from "./cookie";
+import { clearCartCookie, readCartCookie, writeCartCookie } from "./cookie";
 
 const linesInclude = {
   lines: {
@@ -160,4 +160,51 @@ export async function removeItem(variantId: string) {
 
 export async function clearCart(cartId: string) {
   await prisma.cartLine.deleteMany({ where: { cartId } });
+}
+
+/**
+ * Scala koszyk gościa (z cookie) z koszykiem użytkownika po zalogowaniu.
+ * Wywoływane w events.signIn (patrz src/auth.ts).
+ */
+export async function mergeGuestCartIntoUser(userId: string) {
+  const guestId = await readCartCookie();
+  if (!guestId) return;
+  await mergeCartIntoUser(guestId, userId);
+  try {
+    await clearCartCookie();
+  } catch {
+    // czyszczenie cookie poza kontekstem odpowiedzi — koszyk gościa i tak usunięty
+  }
+}
+
+/** Rdzeń scalania (bez cookie — testowalny). */
+export async function mergeCartIntoUser(guestId: string, userId: string) {
+  const guestCart = await prisma.cart.findUnique({
+    where: { id: guestId },
+    include: { lines: true },
+  });
+  // pomijamy, gdy to nie koszyk gościa (np. już przypisany do konta)
+  if (!guestCart || guestCart.userId) return;
+
+  let userCart = await prisma.cart.findUnique({ where: { userId } });
+  if (!userCart) {
+    userCart = await prisma.cart.create({ data: { userId } });
+  }
+
+  for (const line of guestCart.lines) {
+    await prisma.cartLine.upsert({
+      where: { cartId_variantId: { cartId: userCart.id, variantId: line.variantId } },
+      create: { cartId: userCart.id, variantId: line.variantId, quantity: line.quantity },
+      update: { quantity: { increment: line.quantity } },
+    });
+  }
+  // przenosimy kod rabatowy, jeśli user nie ma własnego
+  if (guestCart.discountCode && !userCart.discountCode) {
+    await prisma.cart.update({
+      where: { id: userCart.id },
+      data: { discountCode: guestCart.discountCode },
+    });
+  }
+
+  await prisma.cart.delete({ where: { id: guestId } });
 }

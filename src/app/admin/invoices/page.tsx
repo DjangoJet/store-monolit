@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listInvoices } from "@/modules/invoices/service";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export default async function AdminInvoicesPage() {

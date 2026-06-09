@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listOrders } from "@/modules/orders/admin";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import type { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

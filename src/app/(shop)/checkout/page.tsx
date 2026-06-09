@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentCart } from "@/modules/cart/service";
 import { listActiveShippingMethods } from "@/modules/shipping/service";
 import { getCurrentUser } from "@/server/session";
+import { checkoutConfig } from "@/lib/config";
 import { CheckoutForm, type ShippingMethodOption } from "./checkout-form";
 
 export default async function CheckoutPage() {
@@ -14,6 +15,11 @@ export default async function CheckoutPage() {
     listActiveShippingMethods(),
     getCurrentUser(),
   ]);
+
+  // Opcjonalne wymuszenie logowania przed kasą.
+  if (checkoutConfig.requireAuth && !user) {
+    redirect("/auth/login?callbackUrl=/checkout");
+  }
 
   const options: ShippingMethodOption[] = methods.map((m) => ({
     id: m.id,

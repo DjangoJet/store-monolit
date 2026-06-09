@@ -40,4 +40,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    // Po zalogowaniu: scal koszyk gościa i podepnij jego zamówienia (po mailu).
+    // Dynamiczny import zrywa cykl auth → cart/orders → session → auth.
+    async signIn({ user }) {
+      if (!user?.id) return;
+      try {
+        const { mergeGuestCartIntoUser } = await import("@/modules/cart/service");
+        await mergeGuestCartIntoUser(user.id);
+        if (user.email) {
+          const { linkGuestOrders } = await import("@/modules/orders/service");
+          await linkGuestOrders(user.id, user.email);
+        }
+      } catch (err) {
+        console.error("Po zalogowaniu (merge koszyka/zamówień) nie powiodło się:", err);
+      }
+    },
+  },
 });

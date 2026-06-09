@@ -18,6 +18,20 @@ export function toMajorString(minor: number): string {
   return (minor / 100).toFixed(2);
 }
 
+/**
+ * Formatowanie kwot przechowywanych w groszach (Int) → string waluty.
+ * Klient-safe (bez env). Domyślnie PLN/pl; wywołania zwykle podają walutę jawnie.
+ */
+export function formatMoney(
+  amountMinor: number,
+  currency = "PLN",
+  locale = "pl",
+): string {
+  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(
+    amountMinor / 100,
+  );
+}
+
 /** Tworzy slug URL-friendly z tekstu (obsługa polskich znaków). */
 export function slugify(input: string): string {
   const map: Record<string, string> = {

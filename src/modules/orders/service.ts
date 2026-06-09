@@ -169,6 +169,14 @@ export async function getOrderByNumber(number: string) {
   });
 }
 
+/** Po zalogowaniu/rejestracji podpina zamówienia gościa złożone na ten sam email. */
+export async function linkGuestOrders(userId: string, email: string) {
+  await prisma.order.updateMany({
+    where: { userId: null, email: { equals: email, mode: "insensitive" } },
+    data: { userId },
+  });
+}
+
 export async function listUserOrders(userId: string) {
   return prisma.order.findMany({
     where: { userId },

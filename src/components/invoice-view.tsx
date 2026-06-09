@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 
 interface Party {
   name?: string;

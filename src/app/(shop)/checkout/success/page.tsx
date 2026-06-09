@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getOrderByNumber } from "@/modules/orders/service";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 
 export default async function CheckoutSuccessPage({
   searchParams,

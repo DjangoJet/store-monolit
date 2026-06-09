@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/server/session";
 import { listUserOrders } from "@/modules/orders/service";
 import { listUserInvoices } from "@/modules/invoices/service";
-import { formatMoney, features } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
+import { features } from "@/lib/config";
 import { Badge } from "@/components/ui/badge";
 
 export default async function AccountOrdersPage() {

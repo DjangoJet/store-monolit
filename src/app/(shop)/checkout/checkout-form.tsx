@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { placeOrderAction, type CheckoutState } from "@/modules/checkout/actions";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

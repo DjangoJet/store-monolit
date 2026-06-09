@@ -11,6 +11,11 @@ export const features = {
 
 export type FeatureKey = keyof typeof features;
 
+/** Zachowanie checkoutu. */
+export const checkoutConfig = {
+  requireAuth: env.REQUIRE_AUTH_CHECKOUT,
+} as const;
+
 /** Globalna konfiguracja sklepu (wartości domyślne; nadpisywalne przez model Setting). */
 export const storeConfig = {
   defaultCurrency: env.DEFAULT_CURRENCY,
@@ -18,14 +23,5 @@ export const storeConfig = {
   appUrl: env.APP_URL,
 } as const;
 
-/** Formatowanie kwot przechowywanych w groszach (Int) → string waluty. */
-export function formatMoney(
-  amountMinor: number,
-  currency: string = storeConfig.defaultCurrency,
-  locale: string = storeConfig.defaultLocale,
-) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
+// Uwaga: formatMoney jest w @/lib/utils (klient-safe, bez importu env).
+// config.ts importuje env (sekrety serwerowe) — NIE importuj go w komponentach klienckich.

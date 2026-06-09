@@ -14,7 +14,7 @@ import {
   resendConfirmationAction,
   updateOrderStatusAction,
 } from "@/modules/orders/actions";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

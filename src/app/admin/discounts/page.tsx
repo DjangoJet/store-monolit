@@ -1,6 +1,6 @@
 import { listDiscounts } from "@/modules/discounts/service";
 import { deleteDiscountAction } from "@/modules/discounts/actions";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { requireFeature } from "@/server/feature";
 import { DiscountForm } from "./discount-form";

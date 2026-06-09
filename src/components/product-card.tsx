@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import type { ProductCardDTO } from "@/modules/catalog/storefront";
 
 export function ProductCard({ product }: { product: ProductCardDTO }) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listProducts } from "@/modules/catalog/products";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

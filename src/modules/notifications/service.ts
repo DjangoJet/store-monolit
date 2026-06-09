@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { formatMoney } from "@/lib/config";
+import { formatMoney } from "@/lib/utils";
 import { getEmailAdapter } from "./index";
 
 /** Wysyła potwierdzenie zamówienia (best-effort — nie blokuje przepływu przy błędzie). */

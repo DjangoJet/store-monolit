@@ -68,6 +68,9 @@ const schema = z.object({
   FEATURE_DIGITAL: boolish.default(false),
   FEATURE_INVOICES: boolish.default(true),
 
+  // Wymuś logowanie przed kasą (domyślnie guest checkout dozwolony)
+  REQUIRE_AUTH_CHECKOUT: boolish.default(false),
+
   // Domyślne ustawienia sklepu
   DEFAULT_CURRENCY: z.string().default("PLN"),
   DEFAULT_LOCALE: z.string().default("pl"),
