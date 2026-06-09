@@ -7,9 +7,12 @@ import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { storeConfig } from "@/lib/config";
 import { sendPasswordReset, sendWelcome } from "@/modules/notifications/service";
+import { toFieldErrors } from "@/lib/forms";
 import { forgotSchema, loginSchema, registerSchema } from "./schemas";
 
-export type AuthActionState = { error?: string; success?: string } | undefined;
+export type AuthActionState =
+  | { error?: string; success?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 const DEFAULT_REDIRECT = "/account";
 
@@ -22,7 +25,8 @@ export async function loginAction(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: "Nieprawidłowe dane logowania." };
+    // Tylko błędy formatu (pusty/niepoprawny email, brak hasła) — bezpieczne do pokazania.
+    return { error: "Nieprawidłowe dane logowania.", fieldErrors: toFieldErrors(parsed.error) };
   }
 
   // Tylko ścieżki względne (ochrona przed open-redirect).
@@ -54,14 +58,15 @@ export async function registerAction(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane." };
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
   }
 
   const { name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return { error: "Konto z tym adresem email już istnieje." };
+    // Błąd związany z polem -> tylko fieldError (bez duplikatu w ogólnym `error`).
+    return { fieldErrors: { email: "Konto z tym adresem email już istnieje." } };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

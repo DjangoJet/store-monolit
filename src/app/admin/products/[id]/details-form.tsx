@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export interface DetailsFormProps {
   product: {
@@ -28,6 +29,7 @@ export function DetailsForm({ product }: DetailsFormProps) {
     updateProductAction,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="space-y-4">
@@ -35,7 +37,14 @@ export function DetailsForm({ product }: DetailsFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="title">Tytuł *</Label>
-        <Input id="title" name="title" defaultValue={product.title} required />
+        <Input
+          id="title"
+          name="title"
+          defaultValue={product.title}
+          aria-invalid={!!errors?.title}
+          required
+        />
+        <FieldError message={errors?.title} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

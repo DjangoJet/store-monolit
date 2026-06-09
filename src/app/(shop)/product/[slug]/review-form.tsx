@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export function ReviewForm({ productId, slug }: { productId: string; slug: string }) {
   const [state, action, pending] = useActionState<ReviewState, FormData>(
     submitReviewAction,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="space-y-3 rounded-lg border p-4">
@@ -28,15 +30,18 @@ export function ReviewForm({ productId, slug }: { productId: string; slug: strin
               </option>
             ))}
           </Select>
+          <FieldError message={errors?.rating} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="title">Tytuł</Label>
-          <Input id="title" name="title" />
+          <Input id="title" name="title" aria-invalid={!!errors?.title} />
+          <FieldError message={errors?.title} />
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="body">Treść</Label>
-        <Textarea id="body" name="body" rows={3} />
+        <Textarea id="body" name="body" rows={3} aria-invalid={!!errors?.body} />
+        <FieldError message={errors?.body} />
       </div>
 
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}

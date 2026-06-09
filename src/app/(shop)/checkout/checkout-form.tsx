@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export interface ShippingMethodOption {
   id: string;
@@ -41,6 +42,7 @@ export function CheckoutForm({
     undefined,
   );
   const [selectedMethod, setSelectedMethod] = useState(methods[0]?.id ?? "");
+  const errors = state?.fieldErrors;
 
   const method = methods.find((m) => m.id === selectedMethod);
   const baseShipping =
@@ -58,7 +60,15 @@ export function CheckoutForm({
           <h2 className="text-lg font-medium">Kontakt</h2>
           <div className="space-y-2">
             <Label htmlFor="email">Email *</Label>
-            <Input id="email" name="email" type="email" defaultValue={defaultEmail} required />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              defaultValue={defaultEmail}
+              aria-invalid={!!errors?.email}
+              required
+            />
+            <FieldError message={errors?.email} />
           </div>
         </section>
 
@@ -68,16 +78,29 @@ export function CheckoutForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="firstName">Imię *</Label>
-              <Input id="firstName" name="firstName" required />
+              <Input
+                id="firstName"
+                name="firstName"
+                aria-invalid={!!errors?.firstName}
+                required
+              />
+              <FieldError message={errors?.firstName} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Nazwisko *</Label>
-              <Input id="lastName" name="lastName" required />
+              <Input
+                id="lastName"
+                name="lastName"
+                aria-invalid={!!errors?.lastName}
+                required
+              />
+              <FieldError message={errors?.lastName} />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="line1">Ulica i numer *</Label>
-            <Input id="line1" name="line1" required />
+            <Input id="line1" name="line1" aria-invalid={!!errors?.line1} required />
+            <FieldError message={errors?.line1} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="line2">Adres c.d.</Label>
@@ -86,17 +109,26 @@ export function CheckoutForm({
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label htmlFor="postalCode">Kod *</Label>
-              <Input id="postalCode" name="postalCode" required />
+              <Input
+                id="postalCode"
+                name="postalCode"
+                placeholder="00-000"
+                aria-invalid={!!errors?.postalCode}
+                required
+              />
+              <FieldError message={errors?.postalCode} />
             </div>
             <div className="col-span-2 space-y-2">
               <Label htmlFor="city">Miasto *</Label>
-              <Input id="city" name="city" required />
+              <Input id="city" name="city" aria-invalid={!!errors?.city} required />
+              <FieldError message={errors?.city} />
             </div>
           </div>
           <input type="hidden" name="country" value="PL" />
           <div className="space-y-2">
             <Label htmlFor="phone">Telefon</Label>
-            <Input id="phone" name="phone" />
+            <Input id="phone" name="phone" aria-invalid={!!errors?.phone} />
+            <FieldError message={errors?.phone} />
           </div>
         </section>
 
@@ -126,6 +158,7 @@ export function CheckoutForm({
                 </label>
               );
             })}
+            <FieldError message={errors?.shippingMethodId} />
           </div>
           {method?.requiresPickupPoint && (
             <div className="space-y-2">
@@ -134,8 +167,10 @@ export function CheckoutForm({
                 id="pickupPointCode"
                 name="pickupPointCode"
                 placeholder="np. WAW01A"
+                aria-invalid={!!errors?.pickupPointCode}
                 required
               />
+              <FieldError message={errors?.pickupPointCode} />
               <p className="text-xs text-muted-foreground">
                 Widget mapy Paczkomatów dojdzie z integracją Furgonetki (Faza 4).
               </p>

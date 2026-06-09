@@ -5,9 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCart, getOrCreateCartId } from "@/modules/cart/service";
 import { getCurrentUser, requireRole } from "@/server/session";
 import { toMinor } from "@/lib/utils";
+import { toFieldErrors } from "@/lib/forms";
 import { createDiscount, deleteDiscount, evaluateDiscount } from "./service";
+import { discountInputSchema } from "./schemas";
 
-export type DiscountState = { error?: string; success?: string } | undefined;
+export type DiscountState =
+  | { error?: string; success?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 // ---- Koszyk ----
 
@@ -46,23 +50,29 @@ export async function createDiscountAction(
   formData: FormData,
 ): Promise<DiscountState> {
   await requireRole("STAFF");
-  const code = String(formData.get("code") ?? "").trim();
-  const type = String(formData.get("type")) as "PERCENT" | "FIXED" | "FREE_SHIPPING";
-  if (!code) return { error: "Kod jest wymagany." };
 
-  const rawValue = String(formData.get("value") ?? "0");
-  const value = type === "FIXED" ? toMinor(rawValue) : Math.round(Number(rawValue) || 0);
-  const minSubtotal = formData.get("minSubtotal")
-    ? toMinor(String(formData.get("minSubtotal")))
-    : null;
-  const usageLimit = formData.get("usageLimit")
-    ? Number(formData.get("usageLimit"))
-    : null;
+  const parsed = discountInputSchema.safeParse({
+    code: formData.get("code"),
+    type: formData.get("type"),
+    value: formData.get("value") ?? 0,
+    minSubtotal: formData.get("minSubtotal") || null,
+    usageLimit: formData.get("usageLimit") || null,
+  });
+  if (!parsed.success) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
+  }
+
+  const { code, type } = parsed.data;
+  // Kwoty -> grosze; procent zostaje liczbą całkowitą.
+  const value = type === "FIXED" ? toMinor(String(parsed.data.value)) : Math.round(parsed.data.value);
+  const minSubtotal =
+    parsed.data.minSubtotal != null ? toMinor(String(parsed.data.minSubtotal)) : null;
+  const usageLimit = parsed.data.usageLimit ?? null;
 
   try {
     await createDiscount({ code, type, value, minSubtotal, usageLimit });
   } catch {
-    return { error: "Kod o tej nazwie już istnieje." };
+    return { fieldErrors: { code: "Kod o tej nazwie już istnieje." } };
   }
   revalidatePath("/admin/discounts");
   return { success: "Dodano kod rabatowy." };

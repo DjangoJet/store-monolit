@@ -7,18 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export function NewProductForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(
     createProductAction,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="max-w-xl space-y-4">
       <div className="space-y-2">
         <Label htmlFor="title">Tytuł *</Label>
-        <Input id="title" name="title" required />
+        <Input id="title" name="title" aria-invalid={!!errors?.title} required />
+        <FieldError message={errors?.title} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -54,7 +57,16 @@ export function NewProductForm() {
 
       <div className="space-y-2">
         <Label htmlFor="price">Cena bazowa (PLN) *</Label>
-        <Input id="price" name="price" type="text" inputMode="decimal" placeholder="0.00" required />
+        <Input
+          id="price"
+          name="price"
+          type="text"
+          inputMode="decimal"
+          placeholder="0.00"
+          aria-invalid={!!errors?.price}
+          required
+        />
+        <FieldError message={errors?.price} />
         <p className="text-xs text-muted-foreground">
           Tworzy pierwszy wariant. Kolejne dodasz po zapisaniu.
         </p>

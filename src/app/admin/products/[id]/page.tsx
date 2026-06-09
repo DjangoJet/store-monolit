@@ -3,19 +3,14 @@ import { notFound } from "next/navigation";
 import { getProductById } from "@/modules/catalog/products";
 import { listCategories } from "@/modules/catalog/categories";
 import {
-  addVariantAction,
   deleteProductAction,
   deleteProductImageAction,
-  deleteVariantAction,
   setProductCategoriesAction,
-  updateVariantAction,
 } from "@/modules/catalog/actions";
-import { toMajorString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DetailsForm } from "./details-form";
 import { ImageUploader } from "./image-uploader";
+import { AddVariantForm, VariantRow } from "./variants-form";
 
 export default async function EditProductPage({
   params,
@@ -58,74 +53,21 @@ export default async function EditProductPage({
         <h2 className="mb-3 text-lg font-medium">Warianty</h2>
         <div className="space-y-3">
           {product.variants.map((v) => (
-            <form
+            <VariantRow
               key={v.id}
-              action={updateVariantAction}
-              className="grid grid-cols-12 items-end gap-2 rounded-lg border p-3"
-            >
-              <input type="hidden" name="id" value={v.id} />
-              <input type="hidden" name="productId" value={product.id} />
-              <div className="col-span-4 space-y-1">
-                <Label className="text-xs">Nazwa</Label>
-                <Input name="title" defaultValue={v.title} required />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">SKU</Label>
-                <Input name="sku" defaultValue={v.sku ?? ""} />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Cena (PLN)</Label>
-                <Input name="price" defaultValue={toMajorString(v.priceAmount)} required />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Stan</Label>
-                <Input name="quantity" type="number" defaultValue={v.inventory?.quantity ?? 0} />
-              </div>
-              <div className="col-span-2 flex gap-2">
-                <Button type="submit" size="sm" variant="outline">
-                  Zapisz
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="ghost"
-                  formAction={deleteVariantAction}
-                >
-                  Usuń
-                </Button>
-              </div>
-            </form>
+              productId={product.id}
+              variant={{
+                id: v.id,
+                title: v.title,
+                sku: v.sku,
+                priceAmount: v.priceAmount,
+                quantity: v.inventory?.quantity ?? 0,
+              }}
+            />
           ))}
         </div>
 
-        {/* Dodaj wariant */}
-        <form
-          action={addVariantAction}
-          className="mt-4 grid grid-cols-12 items-end gap-2 rounded-lg border border-dashed p-3"
-        >
-          <input type="hidden" name="productId" value={product.id} />
-          <div className="col-span-4 space-y-1">
-            <Label className="text-xs">Nazwa</Label>
-            <Input name="title" placeholder="np. Rozmiar M" required />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label className="text-xs">SKU</Label>
-            <Input name="sku" />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label className="text-xs">Cena (PLN)</Label>
-            <Input name="price" placeholder="0.00" required />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label className="text-xs">Stan</Label>
-            <Input name="quantity" type="number" defaultValue={0} />
-          </div>
-          <div className="col-span-2">
-            <Button type="submit" size="sm">
-              Dodaj
-            </Button>
-          </div>
-        </form>
+        <AddVariantForm productId={product.id} />
       </section>
 
       {/* --- Media --- */}

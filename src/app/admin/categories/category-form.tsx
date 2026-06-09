@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { FieldError } from "@/components/ui/field-error";
 
 export function CategoryForm({
   parents,
@@ -16,12 +17,14 @@ export function CategoryForm({
     createCategoryAction,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="space-y-3 rounded-lg border p-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nazwa *</Label>
-        <Input id="name" name="name" required />
+        <Input id="name" name="name" aria-invalid={!!errors?.name} required />
+        <FieldError message={errors?.name} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="parentId">Kategoria nadrzędna</Label>

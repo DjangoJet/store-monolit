@@ -2,10 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole, requireUser } from "@/server/session";
+import { toFieldErrors } from "@/lib/forms";
 import type { ReviewStatus } from "@/generated/prisma/enums";
 import { createReview, setReviewStatus } from "./service";
+import { reviewInputSchema } from "./schemas";
 
-export type ReviewState = { error?: string; success?: string } | undefined;
+export type ReviewState =
+  | { error?: string; success?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 export async function submitReviewAction(
   _prev: ReviewState,
@@ -14,15 +18,23 @@ export async function submitReviewAction(
   const user = await requireUser();
   const productId = String(formData.get("productId"));
   const slug = String(formData.get("slug"));
-  const rating = Number(formData.get("rating"));
-  if (!productId || !rating) return { error: "Wybierz ocenę." };
+  if (!productId) return { error: "Brak produktu." };
+
+  const parsed = reviewInputSchema.safeParse({
+    rating: formData.get("rating"),
+    title: formData.get("title") || undefined,
+    body: formData.get("body") || undefined,
+  });
+  if (!parsed.success) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
+  }
 
   await createReview({
     userId: user.id,
     productId,
-    rating,
-    title: formData.get("title") ? String(formData.get("title")) : undefined,
-    body: formData.get("body") ? String(formData.get("body")) : undefined,
+    rating: parsed.data.rating,
+    title: parsed.data.title,
+    body: parsed.data.body,
   });
 
   if (slug) revalidatePath(`/product/${slug}`);

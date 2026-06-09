@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/ui/field-error";
 
 export interface PostFormData {
   id: string;
@@ -28,6 +29,7 @@ export function PostForm({ post }: { post?: PostFormData }) {
     action,
     undefined,
   );
+  const errors = state?.fieldErrors;
 
   return (
     <form action={formAction} className="max-w-2xl space-y-4">
@@ -35,14 +37,16 @@ export function PostForm({ post }: { post?: PostFormData }) {
 
       <div className="space-y-2">
         <Label htmlFor="title">Tytuł *</Label>
-        <Input id="title" name="title" defaultValue={post?.title} required />
+        <Input id="title" name="title" defaultValue={post?.title} aria-invalid={!!errors?.title} required />
+        <FieldError message={errors?.title} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         {post && (
           <div className="space-y-2">
             <Label htmlFor="slug">Slug</Label>
-            <Input id="slug" name="slug" defaultValue={post.slug} />
+            <Input id="slug" name="slug" defaultValue={post.slug} aria-invalid={!!errors?.slug} />
+            <FieldError message={errors?.slug} />
           </div>
         )}
         <div className="space-y-2">
@@ -56,12 +60,25 @@ export function PostForm({ post }: { post?: PostFormData }) {
 
       <div className="space-y-2">
         <Label htmlFor="coverUrl">URL okładki</Label>
-        <Input id="coverUrl" name="coverUrl" defaultValue={post?.coverUrl ?? ""} />
+        <Input
+          id="coverUrl"
+          name="coverUrl"
+          defaultValue={post?.coverUrl ?? ""}
+          aria-invalid={!!errors?.coverUrl}
+        />
+        <FieldError message={errors?.coverUrl} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="excerpt">Zajawka</Label>
-        <Textarea id="excerpt" name="excerpt" rows={2} defaultValue={post?.excerpt ?? ""} />
+        <Textarea
+          id="excerpt"
+          name="excerpt"
+          rows={2}
+          defaultValue={post?.excerpt ?? ""}
+          aria-invalid={!!errors?.excerpt}
+        />
+        <FieldError message={errors?.excerpt} />
       </div>
 
       <div className="space-y-2">

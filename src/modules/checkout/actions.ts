@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { toFieldErrors } from "@/lib/forms";
 import { clearCart, getCurrentCart } from "@/modules/cart/service";
 import { createOrderFromCart } from "@/modules/orders/service";
 import { createPaymentForOrder } from "@/modules/payments/service";
@@ -8,7 +9,9 @@ import { getCurrentUser } from "@/server/session";
 import { checkoutConfig } from "@/lib/config";
 import { checkoutSchema } from "./schemas";
 
-export type CheckoutState = { error?: string } | undefined;
+export type CheckoutState =
+  | { error?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 export async function placeOrderAction(
   _prev: CheckoutState,
@@ -41,7 +44,10 @@ export async function placeOrderAction(
     },
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Sprawdź poprawność danych." };
+    return {
+      error: "Sprawdź poprawność danych.",
+      fieldErrors: toFieldErrors(parsed.error),
+    };
   }
 
   const order = await createOrderFromCart(cart, parsed.data);

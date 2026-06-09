@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/server/session";
 import { toMinor } from "@/lib/utils";
+import { toFieldErrors } from "@/lib/forms";
 import {
   categoryInputSchema,
   productInputSchema,
@@ -26,7 +27,9 @@ import {
   deleteCategory,
 } from "./categories";
 
-export type FormState = { error?: string; success?: string } | undefined;
+export type FormState =
+  | { error?: string; success?: string; fieldErrors?: Record<string, string> }
+  | undefined;
 
 // Cache storefront opiera się na ISR (export const revalidate); tu wymuszamy natychmiastowe
 // odświeżenie listy i konkretnej karty produktu po zmianie.
@@ -51,11 +54,17 @@ export async function createProductAction(
     type: formData.get("type") || "PHYSICAL",
     vatRate: formData.get("vatRate") ?? 23,
   });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane." };
-  }
 
   const price = toMinor(String(formData.get("price") ?? "0"));
+  const fieldErrors = parsed.success ? {} : toFieldErrors(parsed.error);
+  // Cena jest parsowana osobno (toMinor), więc walidujemy ją tutaj.
+  if (!Number.isFinite(price) || price <= 0) {
+    fieldErrors.price = "Podaj poprawną cenę większą od 0";
+  }
+  if (!parsed.success || Object.keys(fieldErrors).length > 0) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors };
+  }
+
   const product = await createProduct(parsed.data, price);
   revalidateCatalog(product.slug);
   redirect(`/admin/products/${product.id}`);
@@ -80,7 +89,7 @@ export async function updateProductAction(
     metaDescription: formData.get("metaDescription") || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane." };
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
   }
 
   const product = await updateProduct(id, parsed.data);
@@ -100,38 +109,59 @@ export async function deleteProductAction(formData: FormData) {
 
 // ---- Warianty ----
 
+// Cena jest parsowana osobno (toMinor) i walidowana w akcji — patrz produkt.
+// Klucz błędu ceny to `priceAmount` (nazwa pola w schemacie), formularz czyta go pod inputem `price`.
 function parseVariant(formData: FormData) {
-  return variantInputSchema.safeParse({
+  const price = toMinor(String(formData.get("price") ?? "0"));
+  const parsed = variantInputSchema.safeParse({
     title: formData.get("title"),
     sku: formData.get("sku") || undefined,
-    priceAmount: toMinor(String(formData.get("price") ?? "0")),
+    priceAmount: Number.isFinite(price) ? price : 0,
     compareAtAmount: formData.get("compareAt")
       ? toMinor(String(formData.get("compareAt")))
       : undefined,
     quantity: formData.get("quantity") || 0,
     weightGrams: formData.get("weightGrams") || undefined,
   });
+
+  const fieldErrors = parsed.success ? {} : toFieldErrors(parsed.error);
+  if (!Number.isFinite(price) || price < 0) {
+    fieldErrors.priceAmount = "Podaj poprawną cenę";
+  }
+  return { parsed, fieldErrors };
 }
 
-export async function addVariantAction(formData: FormData) {
+export async function addVariantAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   await requireRole("STAFF");
   const productId = String(formData.get("productId"));
-  const parsed = parseVariant(formData);
-  if (!parsed.success) return;
+  const { parsed, fieldErrors } = parseVariant(formData);
+  if (!parsed.success || Object.keys(fieldErrors).length > 0) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors };
+  }
   await addVariant(productId, parsed.data);
   revalidateCatalog(await getProductSlug(productId));
   revalidatePath(`/admin/products/${productId}`);
+  return { success: "Dodano wariant." };
 }
 
-export async function updateVariantAction(formData: FormData) {
+export async function updateVariantAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   await requireRole("STAFF");
   const id = String(formData.get("id"));
   const productId = String(formData.get("productId"));
-  const parsed = parseVariant(formData);
-  if (!parsed.success) return;
+  const { parsed, fieldErrors } = parseVariant(formData);
+  if (!parsed.success || Object.keys(fieldErrors).length > 0) {
+    return { error: "Sprawdź poprawność danych.", fieldErrors };
+  }
   await updateVariant(id, parsed.data);
   revalidateCatalog(await getProductSlug(productId));
   revalidatePath(`/admin/products/${productId}`);
+  return { success: "Zapisano wariant." };
 }
 
 export async function deleteVariantAction(formData: FormData) {
@@ -189,7 +219,7 @@ export async function createCategoryAction(
     description: formData.get("description") || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane." };
+    return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
   }
   await createCategory(parsed.data);
   revalidateCatalog();

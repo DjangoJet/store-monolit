@@ -6,16 +6,26 @@ import { loginAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldError } from "@/components/ui/field-error";
 
 export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const [state, action, pending] = useActionState(loginAction, undefined);
+  const errors = state?.fieldErrors;
 
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="redirectTo" value={callbackUrl ?? "/account"} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={!!errors?.email}
+          required
+        />
+        <FieldError message={errors?.email} />
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -32,8 +42,10 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           name="password"
           type="password"
           autoComplete="current-password"
+          aria-invalid={!!errors?.password}
           required
         />
+        <FieldError message={errors?.password} />
       </div>
 
       {state?.error && (
