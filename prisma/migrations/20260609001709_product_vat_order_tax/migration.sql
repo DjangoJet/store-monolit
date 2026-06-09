@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "OrderLine" ADD COLUMN     "taxAmount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "vatRate" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "vatRate" INTEGER NOT NULL DEFAULT 23;
