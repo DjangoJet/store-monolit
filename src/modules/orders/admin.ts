@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { release } from "@/modules/inventory/service";
+import { sendOrderCancellation } from "@/modules/notifications/service";
 import type { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
 
 export interface ListOrdersParams {
@@ -99,4 +100,6 @@ export async function cancelOrder(id: string, actorId?: string) {
       events: { create: { type: "cancelled", message: "Zamówienie anulowane", actorId } },
     },
   });
+
+  await sendOrderCancellation(id);
 }

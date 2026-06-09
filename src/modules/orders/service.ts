@@ -2,7 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/server/session";
 import { commit, release, reserve } from "@/modules/inventory/service";
 import { getShippingMethod, resolveShippingPrice } from "@/modules/shipping/service";
-import { sendOrderConfirmation } from "@/modules/notifications/service";
+import {
+  sendOrderConfirmation,
+  sendPaymentConfirmation,
+} from "@/modules/notifications/service";
 import { evaluateDiscount, recordDiscountUsage } from "@/modules/discounts/service";
 import { getInvoiceSettings } from "@/modules/invoices/service";
 import { computeOrderTax } from "./tax";
@@ -92,6 +95,9 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
     await recordDiscountUsage(discountCode);
   }
 
+  // Potwierdzenie zamówienia wysyłamy przy złożeniu (raz, niezależnie od płatności).
+  await sendOrderConfirmation(order.id);
+
   return order;
 }
 
@@ -119,7 +125,8 @@ export async function markOrderPaid(orderId: string) {
       events: { create: { type: "paid", message: "Płatność zaksięgowana" } },
     },
   });
-  await sendOrderConfirmation(orderId);
+  // Mail „płatność otrzymana" (potwierdzenie zamówienia poszło już przy złożeniu).
+  await sendPaymentConfirmation(orderId);
 }
 
 /** Zamówienie przyjęte bez płatności online (np. płatność przy odbiorze). */
@@ -141,7 +148,7 @@ export async function confirmOrderUnpaid(orderId: string) {
       },
     },
   });
-  await sendOrderConfirmation(orderId);
+  // Potwierdzenie zamówienia wysłano już przy złożeniu (createOrderFromCart).
 }
 
 /** Płatność nieudana/anulowana: zwolnij rezerwację. */

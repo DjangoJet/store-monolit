@@ -37,6 +37,14 @@ services:
       timeout: 5s
       retries: 10
 
+  # Lokalny serwer maili (dev): SMTP na :1025, web UI na :8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   # Jednorazowo tworzy bucket na media i ustawia publiczny odczyt.
   minio-setup:
     image: minio/mc:latest

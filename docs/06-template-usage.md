@@ -28,7 +28,12 @@ cp .env.example .env
 - Płatności: `STRIPE_*` → Stripe Checkout; brak → provider `manual` (offline).
 - Wysyłka: `FURGONETKA_*` + `FURGONETKA_SENDER_*` → Furgonetka; brak → `manual`.
 - Storage: `S3_*` (MinIO/AWS/R2) — wymagane do uploadu zdjęć.
-- Email: `RESEND_API_KEY` lub `SMTP_*` (obecnie fallback konsolowy — patrz TODO).
+- Email: jawny `EMAIL_PROVIDER` = `resend` (z `RESEND_API_KEY`) / `smtp` (z `SMTP_*`) / `console`
+  (domyślnie — tylko logi, nie wysyła). Maile: potwierdzenie zamówienia (przy złożeniu),
+  płatność otrzymana (przy PAID), wysyłka, zwrot, anulowanie, powitalny, reset hasła —
+  szablony w `src/modules/notifications/templates/` (edytowalne).
+  **Dev:** `docker compose up -d mailpit` + w `.env` `EMAIL_PROVIDER=smtp`, `SMTP_HOST=localhost`,
+  `SMTP_PORT=1025` → podgląd maili na http://localhost:8025.
 
 ## 3. Baza
 

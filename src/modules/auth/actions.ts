@@ -2,8 +2,11 @@
 
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { storeConfig } from "@/lib/config";
+import { sendPasswordReset, sendWelcome } from "@/modules/notifications/service";
 import { forgotSchema, loginSchema, registerSchema } from "./schemas";
 
 export type AuthActionState = { error?: string; success?: string } | undefined;
@@ -66,6 +69,8 @@ export async function registerAction(
     data: { name, email, passwordHash, role: "CUSTOMER" },
   });
 
+  await sendWelcome(email, name ?? null);
+
   try {
     await signIn("credentials", { email, password, redirectTo: DEFAULT_REDIRECT });
   } catch (error) {
@@ -89,8 +94,51 @@ export async function forgotAction(
   if (!parsed.success) {
     return { error: "Nieprawidłowy adres email." };
   }
-  // TODO (Faza 1+): wygenerować token i wysłać email (adapter notifications).
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: parsed.data.email.trim(), mode: "insensitive" } },
+  });
+
+  // Wysyłamy tylko gdy konto istnieje, ale komunikat zawsze taki sam (nie zdradzamy istnienia).
+  if (user?.isActive) {
+    const token = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    await prisma.verificationToken.create({
+      data: { identifier: user.email, token, expires },
+    });
+    await sendPasswordReset(
+      user.email,
+      `${storeConfig.appUrl}/auth/reset?token=${token}`,
+    );
+  }
+
   return {
     success: "Jeśli konto istnieje, wyślemy instrukcję resetu hasła na podany adres.",
   };
+}
+
+export async function resetPasswordAction(
+  _prev: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) {
+    return { error: "Hasło musi mieć min. 8 znaków." };
+  }
+
+  const vt = await prisma.verificationToken.findFirst({ where: { token } });
+  if (!vt || vt.expires < new Date()) {
+    return { error: "Link resetu jest nieprawidłowy lub wygasł." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await prisma.user.update({
+    where: { email: vt.identifier },
+    data: { passwordHash },
+  });
+  // unieważnij wszystkie tokeny tego użytkownika
+  await prisma.verificationToken.deleteMany({ where: { identifier: vt.identifier } });
+
+  return { success: "Hasło zostało zmienione. Możesz się zalogować." };
 }

@@ -5,6 +5,7 @@ import {
   markOrderFailed,
   markOrderPaid,
 } from "@/modules/orders/service";
+import { sendRefundNotification } from "@/modules/notifications/service";
 import { getDefaultProviderId, getPaymentProvider } from "./registry";
 
 export interface CreatePaymentResultView {
@@ -94,6 +95,8 @@ export async function refundPayment(paymentId: string, amount?: number) {
       },
     },
   });
+
+  await sendRefundNotification(payment.orderId, refundAmount);
 }
 
 /** Obsługa webhooka bramki: aktualizuje Payment i status zamówienia. Idempotentne. */

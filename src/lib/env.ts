@@ -53,7 +53,8 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: boolish.default(true),
 
   // Email (opcjonalne)
-  EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
+  // Jawny wybór dostawcy maili (jak PAYMENT_PROVIDER). console = tylko logi (nie wysyła).
+  EMAIL_PROVIDER: z.enum(["console", "smtp", "resend"]).default("console"),
   EMAIL_FROM: z.string().default("Sklep <noreply@example.com>"),
   RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),

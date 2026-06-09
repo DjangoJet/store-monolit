@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { getCarrierProvider } from "./registry";
+import { sendShipmentNotification } from "@/modules/notifications/service";
 import type { AddressLike, Parcel } from "./types";
 
 /** Buduje paczki z pozycji zamówienia (wymiary/waga z wariantów; domyślne, gdy brak). */
@@ -104,6 +105,8 @@ export async function createShipment(orderId: string, input: CreateShipmentInput
       },
     },
   });
+
+  await sendShipmentNotification(orderId, shipment.id);
 
   return shipment;
 }
