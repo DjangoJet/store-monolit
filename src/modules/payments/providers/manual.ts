@@ -11,11 +11,11 @@ export class ManualPaymentProvider implements PaymentProvider {
   async createPayment({
     order,
   }: {
-    order: { id: string; number: string };
+    order: { id: string; number: string; publicToken: string };
   }) {
     return {
       providerRef: `manual_${order.id}`,
-      redirectUrl: `${env.APP_URL}/checkout/success?order=${encodeURIComponent(order.number)}`,
+      redirectUrl: `${env.APP_URL}/checkout/success?order=${encodeURIComponent(order.publicToken)}`,
     };
   }
 

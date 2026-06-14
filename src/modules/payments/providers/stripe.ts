@@ -15,7 +15,14 @@ export class StripePaymentProvider implements PaymentProvider {
     order,
     returnUrl,
   }: {
-    order: { id: string; number: string; amount: number; currency: string; email: string };
+    order: {
+      id: string;
+      number: string;
+      publicToken: string;
+      amount: number;
+      currency: string;
+      email: string;
+    };
     returnUrl: string;
   }) {
     const session = await this.stripe.checkout.sessions.create({
@@ -31,7 +38,7 @@ export class StripePaymentProvider implements PaymentProvider {
           },
         },
       ],
-      success_url: `${returnUrl}?order=${encodeURIComponent(order.number)}`,
+      success_url: `${returnUrl}?order=${encodeURIComponent(order.publicToken)}`,
       cancel_url: `${env.APP_URL}/checkout?canceled=1`,
       metadata: { orderId: order.id, orderNumber: order.number },
       payment_intent_data: { metadata: { orderId: order.id } },
@@ -49,10 +56,16 @@ export class StripePaymentProvider implements PaymentProvider {
       env.STRIPE_WEBHOOK_SECRET!,
     );
 
-    if (event.type === "checkout.session.completed") {
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
       const s = event.data.object as Stripe.Checkout.Session;
+      // Metody asynchroniczne (BLIK/P24/przelew): `completed` przychodzi zanim środki
+      // wpłyną (payment_status: "unpaid") — księgujemy dopiero przy statusie "paid"
+      // (dla async potwierdzenie przychodzi osobnym eventem async_payment_succeeded).
       return {
-        type: "paid",
+        type: s.payment_status === "paid" ? "paid" : "authorized",
         providerRef: s.id,
         amount: s.amount_total ?? 0,
         currency: (s.currency ?? "pln").toUpperCase(),

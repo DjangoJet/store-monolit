@@ -56,9 +56,13 @@ export async function sendOrderCancellation(orderId: string) {
   await safeSend(order.email, cancellationEmail(order.number, branding));
 }
 
-export async function sendWelcome(email: string, name: string | null) {
+export async function sendWelcome(
+  email: string,
+  name: string | null,
+  verifyUrl?: string,
+) {
   const branding = await getBranding();
-  await safeSend(email, welcomeEmail(name, branding));
+  await safeSend(email, welcomeEmail(name, branding, verifyUrl));
 }
 
 export async function sendPasswordReset(email: string, resetUrl: string) {

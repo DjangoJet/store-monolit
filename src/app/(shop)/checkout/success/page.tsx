@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getOrderByNumber } from "@/modules/orders/service";
+import { getOrderByPublicToken } from "@/modules/orders/service";
 import { formatMoney } from "@/lib/utils";
 
 export default async function CheckoutSuccessPage({
@@ -7,8 +7,8 @@ export default async function CheckoutSuccessPage({
 }: {
   searchParams: Promise<{ order?: string }>;
 }) {
-  const { order: number } = await searchParams;
-  const order = number ? await getOrderByNumber(number) : null;
+  const { order: token } = await searchParams;
+  const order = token ? await getOrderByPublicToken(token) : null;
 
   return (
     <div className="mx-auto max-w-lg py-12 text-center">

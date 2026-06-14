@@ -17,6 +17,7 @@ export interface CreatePaymentResultView {
 export async function createPaymentForOrder(order: {
   id: string;
   number: string;
+  publicToken: string;
   totalAmount: number;
   currency: string;
   email: string;
@@ -28,6 +29,7 @@ export async function createPaymentForOrder(order: {
     order: {
       id: order.id,
       number: order.number,
+      publicToken: order.publicToken,
       amount: order.totalAmount,
       currency: order.currency,
       email: order.email,
@@ -63,7 +65,16 @@ export async function refundPayment(paymentId: string, amount?: number) {
   if (!payment) throw new Error("Płatność nie istnieje");
 
   const provider = getPaymentProvider(payment.provider);
-  const refundAmount = amount ?? payment.amount;
+  const alreadyRefunded = payment.refunds.reduce((s, r) => s + r.amount, 0);
+  const remaining = payment.amount - alreadyRefunded;
+  const refundAmount = amount ?? remaining;
+  // Twardy limit po stronie aplikacji — Stripe by odrzucił, ale provider `manual`
+  // zapisałby dowolną kwotę.
+  if (refundAmount <= 0 || refundAmount > remaining) {
+    throw new Error(
+      `Kwota zwrotu przekracza pozostałą do zwrotu kwotę (${(remaining / 100).toFixed(2)} ${payment.currency})`,
+    );
+  }
 
   let providerRef: string | undefined;
   if (payment.providerRef && provider.refund) {
@@ -78,8 +89,7 @@ export async function refundPayment(paymentId: string, amount?: number) {
     data: { paymentId, amount: refundAmount, providerRef },
   });
 
-  const totalRefunded =
-    payment.refunds.reduce((s, r) => s + r.amount, 0) + refundAmount;
+  const totalRefunded = alreadyRefunded + refundAmount;
   const status = totalRefunded >= payment.amount ? "REFUNDED" : "PARTIALLY_REFUNDED";
 
   await prisma.payment.update({ where: { id: paymentId }, data: { status } });
@@ -115,6 +125,29 @@ export async function handleWebhook(providerId: string, req: Request) {
   if (!payment) return;
 
   if (event.type === "paid") {
+    // Kwota/waluta z bramki musi zgadzać się z płatnością — rozjazd nie może
+    // po cichu zaksięgować zamówienia (zostaje UNPAID do ręcznej weryfikacji).
+    if (
+      event.amount !== payment.amount ||
+      event.currency.toUpperCase() !== payment.currency.toUpperCase()
+    ) {
+      console.error(
+        `Webhook ${providerId}: kwota ${event.amount} ${event.currency} niezgodna z płatnością ` +
+          `${payment.amount} ${payment.currency} (payment ${payment.id})`,
+      );
+      await prisma.order.update({
+        where: { id: payment.orderId },
+        data: {
+          events: {
+            create: {
+              type: "payment_mismatch",
+              message: `Webhook zgłosił ${(event.amount / 100).toFixed(2)} ${event.currency}, oczekiwano ${(payment.amount / 100).toFixed(2)} ${payment.currency} — wymaga ręcznej weryfikacji`,
+            },
+          },
+        },
+      });
+      return;
+    }
     await prisma.payment.update({
       where: { id: payment.id },
       data: { status: "PAID" },

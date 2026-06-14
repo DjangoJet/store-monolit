@@ -4,6 +4,8 @@
 export interface OrderForPayment {
   id: string;
   number: string;
+  /** Niezgadywalny token do URL-a powrotu (strona sukcesu). */
+  publicToken: string;
   amount: number; // grosze
   currency: string;
   email: string;

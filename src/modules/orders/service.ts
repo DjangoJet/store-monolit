@@ -6,7 +6,11 @@ import {
   sendOrderConfirmation,
   sendPaymentConfirmation,
 } from "@/modules/notifications/service";
-import { evaluateDiscount, recordDiscountUsage } from "@/modules/discounts/service";
+import {
+  claimDiscountUsage,
+  evaluateDiscount,
+  releaseDiscountUsage,
+} from "@/modules/discounts/service";
 import { createInvoiceFromOrder, getInvoiceSettings } from "@/modules/invoices/service";
 import { computeOrderTax } from "./tax";
 import type { CartView } from "@/modules/cart/service";
@@ -14,8 +18,10 @@ import type { CheckoutInput } from "@/modules/checkout/schemas";
 
 async function nextOrderNumber(): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.order.count();
-  return `${year}-${String(count + 1).padStart(6, "0")}`;
+  // Sekwencja DB — atomowa (COUNT(*)+1 dublowało numery przy równoległych zamówieniach).
+  const [{ nextval }] = await prisma.$queryRaw<[{ nextval: bigint }]>`
+    SELECT nextval('order_number_seq')`;
+  return `${year}-${String(nextval).padStart(6, "0")}`;
 }
 
 export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
@@ -25,13 +31,15 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
   const subtotal = cart.subtotal;
   const user = await getCurrentUser();
 
-  // Rabat (walidowany ponownie przy składaniu zamówienia).
+  // Rabat: ponowna walidacja + atomowy claim limitu użyć (chroni usageLimit
+  // przy równoległych zamówieniach). Nieudany claim = zamówienie bez rabatu,
+  // tak jak dotąd przy nieudanej walidacji.
   let discountAmount = 0;
   let freeShipping = false;
   let discountCode: string | null = null;
   if (cart.discountCode) {
     const ev = await evaluateDiscount(cart.discountCode, subtotal, user?.id);
-    if (ev.ok) {
+    if (ev.ok && (await claimDiscountUsage(cart.discountCode))) {
       discountAmount = ev.amount;
       freeShipping = ev.freeShipping;
       discountCode = cart.discountCode;
@@ -61,50 +69,60 @@ export async function createOrderFromCart(cart: CartView, data: CheckoutInput) {
     shippingVatRate: invoiceSettings.vatRate,
   });
 
-  const order = await prisma.order.create({
-    data: {
-      number: await nextOrderNumber(),
-      userId: user?.id ?? null,
-      email: data.email,
-      currency: cart.currency,
-      subtotalAmount: subtotal,
-      discountAmount,
-      shippingAmount: shipping,
-      taxAmount: tax.totalTax,
-      totalAmount: total,
-      discountCode,
-      shippingAddress: data.address,
-      billingAddress,
-      shippingMethod: method.name,
-      shippingPickupPoint: data.pickupPointCode
-        ? { code: data.pickupPointCode }
-        : undefined,
-      invoiceRequested: data.invoiceRequested,
-      buyerNip: data.buyerNip ?? null,
-      customerNote: data.customerNote,
-      lines: {
-        create: cart.lines.map((l) => ({
-          variantId: l.variantId,
-          productTitle: l.productTitle,
-          variantTitle: l.variantTitle,
-          unitAmount: l.unitAmount,
-          quantity: l.quantity,
-          totalAmount: l.lineTotal,
-          vatRate: tax.byVariant.get(l.variantId)?.vatRate ?? 0,
-          taxAmount: tax.byVariant.get(l.variantId)?.taxAmount ?? 0,
-        })),
+  // Rezerwacja PRZED utworzeniem zamówienia — reserve() atomowo sprawdza
+  // dostępność (OutOfStockError trafia do formularza checkoutu). Przy błędzie
+  // dalszych kroków oddajemy rezerwację i claim rabatu.
+  const stockItems = cart.lines.map((l) => ({
+    variantId: l.variantId,
+    quantity: l.quantity,
+  }));
+
+  let order;
+  let reserved = false;
+  try {
+    await reserve(stockItems);
+    reserved = true;
+    order = await prisma.order.create({
+      data: {
+        number: await nextOrderNumber(),
+        userId: user?.id ?? null,
+        email: data.email,
+        currency: cart.currency,
+        subtotalAmount: subtotal,
+        discountAmount,
+        shippingAmount: shipping,
+        taxAmount: tax.totalTax,
+        totalAmount: total,
+        discountCode,
+        shippingAddress: data.address,
+        billingAddress,
+        shippingMethod: method.name,
+        shippingPickupPoint: data.pickupPointCode
+          ? { code: data.pickupPointCode }
+          : undefined,
+        invoiceRequested: data.invoiceRequested,
+        buyerNip: data.buyerNip ?? null,
+        customerNote: data.customerNote,
+        lines: {
+          create: cart.lines.map((l) => ({
+            variantId: l.variantId,
+            productTitle: l.productTitle,
+            variantTitle: l.variantTitle,
+            unitAmount: l.unitAmount,
+            quantity: l.quantity,
+            totalAmount: l.lineTotal,
+            vatRate: tax.byVariant.get(l.variantId)?.vatRate ?? 0,
+            taxAmount: tax.byVariant.get(l.variantId)?.taxAmount ?? 0,
+          })),
+        },
+        events: { create: { type: "created", message: "Zamówienie utworzone" } },
       },
-      events: { create: { type: "created", message: "Zamówienie utworzone" } },
-    },
-    include: { lines: true },
-  });
-
-  await reserve(
-    cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-  );
-
-  if (discountCode) {
-    await recordDiscountUsage(discountCode);
+      include: { lines: true },
+    });
+  } catch (err) {
+    if (reserved) await release(stockItems);
+    if (discountCode) await releaseDiscountUsage(discountCode);
+    throw err;
   }
 
   // Potwierdzenie zamówienia wysyłamy przy złożeniu (raz, niezależnie od płatności).
@@ -185,13 +203,15 @@ export async function confirmOrderUnpaid(orderId: string) {
   await maybeAutoIssueInvoice(orderId);
 }
 
-/** Płatność nieudana/anulowana: zwolnij rezerwację. */
+/** Płatność nieudana/anulowana: zwolnij rezerwację. Idempotentne. */
 export async function markOrderFailed(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { lines: true },
   });
-  if (!order || order.paymentStatus === "PAID") return;
+  // FAILED już obsłużone — drugi event (np. expired po async_payment_failed)
+  // nie może zwolnić rezerwacji po raz drugi.
+  if (!order || order.paymentStatus === "PAID" || order.paymentStatus === "FAILED") return;
 
   await release(stockItemsFromOrder(order.lines));
   await prisma.order.update({
@@ -203,9 +223,13 @@ export async function markOrderFailed(orderId: string) {
   });
 }
 
-export async function getOrderByNumber(number: string) {
+/**
+ * Publiczny podgląd zamówienia (strona sukcesu) — wyłącznie po niezgadywalnym
+ * tokenie. Numer zamówienia jest sekwencyjny, więc nie może być kluczem dostępu.
+ */
+export async function getOrderByPublicToken(token: string) {
   return prisma.order.findUnique({
-    where: { number },
+    where: { publicToken: token },
     include: { lines: true },
   });
 }

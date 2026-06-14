@@ -328,6 +328,8 @@ enum FulfillmentStatus {
 model Order {
   id                String            @id @default(cuid())
   number            String            @unique
+  // Niezgadywalny token do publicznego podglądu (strona sukcesu) — numer jest sekwencyjny.
+  publicToken       String            @unique @default(cuid())
   userId            String?
   user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   email             String

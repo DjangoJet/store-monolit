@@ -28,6 +28,7 @@ export default async function CheckoutPage() {
     currency: m.currency,
     freeOver: m.freeOver,
     requiresPickupPoint: m.requiresPickupPoint,
+    carrier: m.carrier,
     minDays: m.minDays,
     maxDays: m.maxDays,
   }));

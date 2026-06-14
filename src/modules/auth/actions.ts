@@ -7,8 +7,13 @@ import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { storeConfig } from "@/lib/config";
 import { sendPasswordReset, sendWelcome } from "@/modules/notifications/service";
+import { linkGuestOrders } from "@/modules/orders/service";
 import { toFieldErrors } from "@/lib/forms";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { createEmailVerificationUrl } from "./service";
 import { forgotSchema, loginSchema, registerSchema } from "./schemas";
+
+const RATE_LIMITED_ERROR = "Zbyt wiele prób. Spróbuj ponownie za kilka minut.";
 
 export type AuthActionState =
   | { error?: string; success?: string; fieldErrors?: Record<string, string> }
@@ -27,6 +32,15 @@ export async function loginAction(
   if (!parsed.success) {
     // Tylko błędy formatu (pusty/niepoprawny email, brak hasła) — bezpieczne do pokazania.
     return { error: "Nieprawidłowe dane logowania.", fieldErrors: toFieldErrors(parsed.error) };
+  }
+
+  // Ochrona przed brute force: limit per IP i per konto (15 min).
+  const ip = await clientIp();
+  if (
+    !rateLimit(`login:ip:${ip}`, 10, 15 * 60 * 1000) ||
+    !rateLimit(`login:email:${parsed.data.email.toLowerCase()}`, 5, 15 * 60 * 1000)
+  ) {
+    return { error: RATE_LIMITED_ERROR };
   }
 
   // Tylko ścieżki względne (ochrona przed open-redirect).
@@ -61,6 +75,11 @@ export async function registerAction(
     return { error: "Sprawdź poprawność danych.", fieldErrors: toFieldErrors(parsed.error) };
   }
 
+  // Limit rejestracji per IP — utrudnia spam kont i enumerację adresów.
+  if (!rateLimit(`register:ip:${await clientIp()}`, 5, 60 * 60 * 1000)) {
+    return { error: RATE_LIMITED_ERROR };
+  }
+
   const { name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -74,7 +93,10 @@ export async function registerAction(
     data: { name, email, passwordHash, role: "CUSTOMER" },
   });
 
-  await sendWelcome(email, name ?? null);
+  // Link weryfikacyjny w mailu powitalnym — dopiero potwierdzenie skrzynki
+  // podpina zamówienia gościa (patrz modules/auth/service.ts).
+  const verifyUrl = await createEmailVerificationUrl(email);
+  await sendWelcome(email, name ?? null, verifyUrl);
 
   try {
     await signIn("credentials", { email, password, redirectTo: DEFAULT_REDIRECT });
@@ -98,6 +120,14 @@ export async function forgotAction(
   const parsed = forgotSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
     return { error: "Nieprawidłowy adres email." };
+  }
+
+  // Limit per IP i per adres — chroni przed masowym generowaniem tokenów/spamem.
+  if (
+    !rateLimit(`forgot:ip:${await clientIp()}`, 10, 60 * 60 * 1000) ||
+    !rateLimit(`forgot:email:${parsed.data.email.toLowerCase()}`, 3, 15 * 60 * 1000)
+  ) {
+    return { error: RATE_LIMITED_ERROR };
   }
 
   const user = await prisma.user.findFirst({
@@ -132,18 +162,26 @@ export async function resetPasswordAction(
     return { error: "Hasło musi mieć min. 8 znaków." };
   }
 
+  // Limit per IP — utrudnia zgadywanie tokenów resetu.
+  if (!rateLimit(`reset:ip:${await clientIp()}`, 10, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED_ERROR };
+  }
+
   const vt = await prisma.verificationToken.findFirst({ where: { token } });
   if (!vt || vt.expires < new Date()) {
     return { error: "Link resetu jest nieprawidłowy lub wygasł." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.update({
+  // Udany reset dowodzi własności skrzynki — przy okazji potwierdzamy e-mail
+  // i podpinamy zamówienia gościa (jak w weryfikacji adresu).
+  const user = await prisma.user.update({
     where: { email: vt.identifier },
-    data: { passwordHash },
+    data: { passwordHash, emailVerified: new Date() },
   });
   // unieważnij wszystkie tokeny tego użytkownika
   await prisma.verificationToken.deleteMany({ where: { identifier: vt.identifier } });
+  await linkGuestOrders(user.id, user.email);
 
   return { success: "Hasło zostało zmienione. Możesz się zalogować." };
 }

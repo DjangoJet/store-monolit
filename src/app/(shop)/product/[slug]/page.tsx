@@ -89,7 +89,8 @@ export default async function ProductPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // `<` escapowane, by treść (np. tytuł produktu) nie mogła domknąć tagu <script>.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         {/* Galeria */}

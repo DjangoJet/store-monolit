@@ -62,10 +62,26 @@ export async function evaluateDiscount(
   };
 }
 
-export async function recordDiscountUsage(code: string) {
+/**
+ * Atomowo zużywa jedno użycie kodu — warunek limitu jest w UPDATE, więc równoległe
+ * zamówienia nie przekroczą `usageLimit` (evaluateDiscount tylko czyta, tu jest claim).
+ * Zwraca false, gdy limit właśnie się wyczerpał.
+ */
+export async function claimDiscountUsage(code: string): Promise<boolean> {
+  const updated = await prisma.$executeRaw`
+    UPDATE "Discount"
+    SET "usageCount" = "usageCount" + 1
+    WHERE "code" = ${code}
+      AND "isActive" = true
+      AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")`;
+  return updated > 0;
+}
+
+/** Oddaje zużycie kodu (gdy tworzenie zamówienia po claimie się nie powiodło). */
+export async function releaseDiscountUsage(code: string) {
   await prisma.discount.updateMany({
-    where: { code },
-    data: { usageCount: { increment: 1 } },
+    where: { code, usageCount: { gt: 0 } },
+    data: { usageCount: { decrement: 1 } },
   });
 }
 

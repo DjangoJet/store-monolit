@@ -49,8 +49,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { mergeGuestCartIntoUser } = await import("@/modules/cart/service");
         await mergeGuestCartIntoUser(user.id);
         if (user.email) {
-          const { linkGuestOrders } = await import("@/modules/orders/service");
-          await linkGuestOrders(user.id, user.email);
+          // Zamówienia gościa podpinamy wyłącznie przy potwierdzonym e-mailu —
+          // inaczej rejestracja na cudzy adres przejmuje historię zamówień/faktur.
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { emailVerified: true },
+          });
+          if (dbUser?.emailVerified) {
+            const { linkGuestOrders } = await import("@/modules/orders/service");
+            await linkGuestOrders(user.id, user.email);
+          }
         }
       } catch (err) {
         console.error("Po zalogowaniu (merge koszyka/zamówień) nie powiodło się:", err);

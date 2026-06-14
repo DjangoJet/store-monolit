@@ -17,6 +17,7 @@ export interface ShippingMethodOption {
   currency: string;
   freeOver: number | null;
   requiresPickupPoint: boolean;
+  carrier: string | null;
   minDays: number | null;
   maxDays: number | null;
 }
@@ -166,7 +167,7 @@ export function CheckoutForm({
           {method?.requiresPickupPoint && (
             <PickupPointPicker
               key={selectedMethod}
-              methodId={selectedMethod}
+              carrier={method.carrier}
               error={errors?.pickupPointCode}
             />
           )}

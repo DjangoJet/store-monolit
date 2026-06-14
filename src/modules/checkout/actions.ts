@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { toFieldErrors } from "@/lib/forms";
 import { clearCart, getCurrentCart } from "@/modules/cart/service";
+import { OutOfStockError } from "@/modules/inventory/service";
 import { createOrderFromCart } from "@/modules/orders/service";
 import { createPaymentForOrder } from "@/modules/payments/service";
 import { getCurrentUser } from "@/server/session";
@@ -85,12 +86,23 @@ export async function placeOrderAction(
     billingAddress = billing.data;
   }
 
-  const order = await createOrderFromCart(cart, { ...parsed.data, billingAddress });
+  let order;
+  try {
+    order = await createOrderFromCart(cart, { ...parsed.data, billingAddress });
+  } catch (err) {
+    if (err instanceof OutOfStockError) {
+      return {
+        error:
+          "Część produktów z koszyka jest już niedostępna w żądanej ilości. Zaktualizuj koszyk i spróbuj ponownie.",
+      };
+    }
+    throw err;
+  }
   const payment = await createPaymentForOrder(order);
   await clearCart(cart.id);
 
   redirect(
     payment.redirectUrl ??
-      `/checkout/success?order=${encodeURIComponent(order.number)}`,
+      `/checkout/success?order=${encodeURIComponent(order.publicToken)}`,
   );
 }
